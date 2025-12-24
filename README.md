@@ -205,3 +205,4 @@ MIT License - feel free to use this project for your own purposes.
 - [TailwindCSS](https://tailwindcss.com/)
 - [Framer Motion](https://www.framer.com/motion/)
 
+

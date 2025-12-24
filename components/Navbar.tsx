@@ -14,12 +14,14 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Moon, Sun, User, LogOut, Video, Upload, Sparkles } from "lucide-react"
+import { Moon, Sun, LogOut, Video, BookOpen, GraduationCap, Settings, DollarSign } from "lucide-react"
 import { useTheme } from "next-themes"
 import { motion } from "framer-motion"
+import type { UserRole } from "@/lib/types/database.types"
 
 export function Navbar() {
   const [user, setUser] = useState<any>(null)
+  const [userRole, setUserRole] = useState<UserRole | null>(null)
   const [mounted, setMounted] = useState(false)
   const [scrolled, setScrolled] = useState(false)
   const { theme, setTheme } = useTheme()
@@ -35,6 +37,11 @@ export function Navbar() {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null)
+      if (session?.user) {
+        fetchUserRole(session.user.id)
+      } else {
+        setUserRole(null)
+      }
     })
 
     const handleScroll = () => {
@@ -53,10 +60,24 @@ export function Navbar() {
       data: { user },
     } = await supabase.auth.getUser()
     setUser(user)
+    if (user) {
+      await fetchUserRole(user.id)
+    }
+  }
+
+  async function fetchUserRole(userId: string) {
+    const { data: profile } = await supabase
+      .from("user_profiles")
+      .select("role")
+      .eq("id", userId)
+      .single()
+    
+    setUserRole(profile?.role || null)
   }
 
   async function handleLogout() {
     await supabase.auth.signOut()
+    setUserRole(null)
     router.push("/")
     router.refresh()
   }
@@ -64,6 +85,13 @@ export function Navbar() {
   if (!mounted) return null
 
   const userInitials = user?.email?.charAt(0).toUpperCase() || "U"
+  
+  // Determine dashboard path based on role
+  const getDashboardPath = () => {
+    if (userRole === "instructor") return "/instructor/dashboard"
+    if (userRole === "admin") return "/admin/dashboard"
+    return "/student/dashboard"
+  }
 
   return (
     <motion.nav
@@ -95,49 +123,128 @@ export function Navbar() {
           <div className="flex items-center space-x-2">
             {user ? (
               <>
-                <Link href="/dashboard">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className={`relative ${
-                      pathname === "/dashboard"
-                        ? "text-blue-600 dark:text-blue-400"
-                        : ""
-                    }`}
-                  >
-                    Dashboard
-                    {pathname === "/dashboard" && (
-                      <motion.div
-                        layoutId="navbar-indicator"
-                        className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-blue-500 to-purple-500"
-                        initial={false}
-                        transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                      />
-                    )}
-                  </Button>
-                </Link>
-                <Link href="/upload">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className={`relative ${
-                      pathname === "/upload"
-                        ? "text-blue-600 dark:text-blue-400"
-                        : ""
-                    }`}
-                  >
-                    <Upload className="mr-2 h-4 w-4" />
-                    Upload
-                    {pathname === "/upload" && (
-                      <motion.div
-                        layoutId="navbar-indicator"
-                        className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-blue-500 to-purple-500"
-                        initial={false}
-                        transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                      />
-                    )}
-                  </Button>
-                </Link>
+                {/* Role-based navigation */}
+                {userRole === "instructor" && (
+                  <>
+                    <Link href="/instructor/dashboard">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className={`relative rounded-xl ${
+                          pathname.startsWith("/instructor")
+                            ? "text-purple-600 dark:text-purple-400"
+                            : ""
+                        }`}
+                      >
+                        Dashboard
+                        {pathname.startsWith("/instructor") && (
+                          <motion.div
+                            layoutId="navbar-indicator"
+                            className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-purple-500 to-pink-500"
+                            initial={false}
+                            transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                          />
+                        )}
+                      </Button>
+                    </Link>
+                    <Link href="/instructor/courses">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="rounded-xl"
+                      >
+                        <BookOpen className="mr-2 h-4 w-4" />
+                        Courses
+                      </Button>
+                    </Link>
+                    <Link href="/instructor/earnings">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="rounded-xl"
+                      >
+                        <DollarSign className="mr-2 h-4 w-4" />
+                        Earnings
+                      </Button>
+                    </Link>
+                  </>
+                )}
+                
+                {userRole === "student" && (
+                  <>
+                    <Link href="/student/dashboard">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className={`relative rounded-xl ${
+                          pathname.startsWith("/student")
+                            ? "text-blue-600 dark:text-blue-400"
+                            : ""
+                        }`}
+                      >
+                        Dashboard
+                        {pathname.startsWith("/student") && (
+                          <motion.div
+                            layoutId="navbar-indicator"
+                            className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-blue-500 to-purple-500"
+                            initial={false}
+                            transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                          />
+                        )}
+                      </Button>
+                    </Link>
+                    <Link href="/courses">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="rounded-xl"
+                      >
+                        <BookOpen className="mr-2 h-4 w-4" />
+                        Browse Courses
+                      </Button>
+                    </Link>
+                  </>
+                )}
+
+                {userRole === "admin" && (
+                  <>
+                    <Link href="/admin/dashboard">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className={`relative rounded-xl ${
+                          pathname.startsWith("/admin")
+                            ? "text-red-600 dark:text-red-400"
+                            : ""
+                        }`}
+                      >
+                        Admin
+                        {pathname.startsWith("/admin") && (
+                          <motion.div
+                            layoutId="navbar-indicator"
+                            className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-red-500 to-orange-500"
+                            initial={false}
+                            transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                          />
+                        )}
+                      </Button>
+                    </Link>
+                  </>
+                )}
+
+                {/* Fallback for users without role */}
+                {!userRole && (
+                  <Link href={getDashboardPath()}>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="rounded-xl"
+                    >
+                      Dashboard
+                    </Button>
+                  </Link>
+                )}
+
                 <Button
                   variant="ghost"
                   size="icon"
@@ -174,6 +281,11 @@ export function Navbar() {
                         <p className="text-sm font-medium leading-none">
                           {user.email}
                         </p>
+                        {userRole && (
+                          <p className="text-xs text-muted-foreground capitalize">
+                            {userRole}
+                          </p>
+                        )}
                       </div>
                     </DropdownMenuLabel>
                     <DropdownMenuSeparator className="bg-white/10" />
@@ -181,11 +293,45 @@ export function Navbar() {
                       asChild
                       className="rounded-lg cursor-pointer hover:bg-white/10 transition-colors"
                     >
-                      <Link href="/dashboard" className="flex items-center">
+                      <Link href={getDashboardPath()} className="flex items-center">
                         <Video className="mr-2 h-4 w-4" />
-                        My Videos
+                        Dashboard
                       </Link>
                     </DropdownMenuItem>
+                    {userRole === "instructor" && (
+                      <>
+                        <DropdownMenuItem
+                          asChild
+                          className="rounded-lg cursor-pointer hover:bg-white/10 transition-colors"
+                        >
+                          <Link href="/instructor/subscription" className="flex items-center">
+                            <GraduationCap className="mr-2 h-4 w-4" />
+                            Subscription
+                          </Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          asChild
+                          className="rounded-lg cursor-pointer hover:bg-white/10 transition-colors"
+                        >
+                          <Link href="/instructor/earnings" className="flex items-center">
+                            <DollarSign className="mr-2 h-4 w-4" />
+                            Earnings
+                          </Link>
+                        </DropdownMenuItem>
+                      </>
+                    )}
+                    {userRole === "admin" && (
+                      <DropdownMenuItem
+                        asChild
+                        className="rounded-lg cursor-pointer hover:bg-white/10 transition-colors"
+                      >
+                        <Link href="/admin/dashboard" className="flex items-center">
+                          <Settings className="mr-2 h-4 w-4" />
+                          Admin Panel
+                        </Link>
+                      </DropdownMenuItem>
+                    )}
+                    <DropdownMenuSeparator className="bg-white/10" />
                     <DropdownMenuItem
                       onClick={handleLogout}
                       className="rounded-lg cursor-pointer hover:bg-red-500/10 text-red-600 dark:text-red-400 transition-colors"

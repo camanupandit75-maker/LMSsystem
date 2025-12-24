@@ -35,7 +35,28 @@ export default function SignInPage() {
 
       if (error) throw error
 
-      router.push(redirectedFrom)
+      // Get user profile to determine redirect
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      if (session) {
+        const { data: profile } = await supabase
+          .from('user_profiles')
+          .select('role')
+          .eq('id', session.user.id)
+          .single()
+
+        // Redirect based on role
+        if (profile?.role === 'instructor') {
+          router.push('/instructor/dashboard')
+        } else if (profile?.role === 'admin') {
+          router.push('/admin/dashboard')
+        } else {
+          router.push('/student/dashboard')
+        }
+      } else {
+        router.push(redirectedFrom)
+      }
+      
       router.refresh()
     } catch (err: any) {
       setError(err.message || "Failed to sign in")

@@ -9,12 +9,15 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { motion } from "framer-motion"
-import { UserPlus, Mail, Lock, ArrowRight, CheckCircle2 } from "lucide-react"
+import { UserPlus, Mail, Lock, ArrowRight, CheckCircle2, GraduationCap, BookOpen } from "lucide-react"
+import type { UserRole } from "@/lib/types/database.types"
 
 export default function SignUpPage() {
+  const [fullName, setFullName] = useState("")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
+  const [role, setRole] = useState<UserRole>("student")
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
@@ -23,30 +26,96 @@ export default function SignUpPage() {
   async function handleSignUp(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
-
-    if (password !== confirmPassword) {
-      setError("Passwords do not match")
-      return
-    }
-
-    if (password.length < 6) {
-      setError("Password must be at least 6 characters")
-      return
-    }
-
     setIsLoading(true)
 
+    // Validate passwords match
+    if (password !== confirmPassword) {
+      setError("Passwords do not match")
+      setIsLoading(false)
+      return
+    }
+
+    // Validate password length
+    if (password.length < 6) {
+      setError("Password must be at least 6 characters")
+      setIsLoading(false)
+      return
+    }
+
     try {
-      const { error } = await supabase.auth.signUp({
+      // 1. Create auth user (NO email confirmation for now)
+      const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
         password,
       })
 
-      if (error) throw error
+      if (authError) throw authError
+      if (!authData.user) throw new Error("No user returned from signup")
 
-      router.push("/dashboard")
-      router.refresh()
+      console.log("Auth user created:", authData.user.id)
+
+      // 2. Create user profile
+      const { error: profileError } = await supabase
+        .from("user_profiles")
+        .insert({
+          id: authData.user.id,
+          role: role,
+          full_name: fullName.trim(),
+          avatar_url: null,
+        })
+
+      if (profileError) {
+        console.error("Profile creation error:", profileError)
+        throw new Error(`Failed to create user profile: ${profileError.message}`)
+      }
+
+      console.log("User profile created")
+
+      // 3. If instructor, create free subscription
+      if (role === "instructor") {
+        const { error: subError } = await supabase
+          .from("instructor_subscriptions")
+          .insert({
+            instructor_id: authData.user.id,
+            tier: "free",
+            max_courses: 1,
+            used_courses: 0,
+            is_active: true,
+          })
+
+        if (subError) {
+          console.error("Subscription creation error:", subError)
+          // Don't throw - profile created successfully
+        } else {
+          console.log("Instructor subscription created")
+        }
+      }
+
+      // 4. Auto sign in (since email confirmation is disabled)
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      })
+
+      if (signInError) {
+        console.error("Auto sign-in error:", signInError)
+        // Don't throw - user can sign in manually
+        alert("Account created! Please sign in.")
+        router.push("/auth/signin")
+        return
+      }
+
+      console.log("User signed in successfully")
+
+      // 5. Redirect based on role
+      if (role === "instructor") {
+        router.push("/instructor/dashboard")
+      } else {
+        router.push("/student/dashboard")
+      }
+      
     } catch (err: any) {
+      console.error("Signup error:", err)
       setError(err.message || "Failed to create account")
     } finally {
       setIsLoading(false)
@@ -106,6 +175,81 @@ export default function SignUpPage() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSignUp} className="space-y-5">
+              {/* Role Selection */}
+              <div className="space-y-3">
+                <Label className="text-base font-semibold">I want to sign up as</Label>
+                <div className="grid grid-cols-2 gap-3">
+                  <motion.button
+                    type="button"
+                    onClick={() => setRole("student")}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    className={`relative p-4 rounded-xl border-2 transition-all ${
+                      role === "student"
+                        ? "border-blue-500 bg-blue-500/20"
+                        : "border-slate-700 bg-slate-800/50 hover:border-slate-600"
+                    }`}
+                  >
+                    <BookOpen className={`h-6 w-6 mb-2 ${role === "student" ? "text-blue-400" : "text-muted-foreground"}`} />
+                    <div className={`font-semibold ${role === "student" ? "text-blue-400" : "text-muted-foreground"}`}>
+                      Student
+                    </div>
+                    <div className="text-xs text-muted-foreground mt-1">Browse & Learn</div>
+                    {role === "student" && (
+                      <motion.div
+                        layoutId="role-indicator"
+                        className="absolute inset-0 border-2 border-blue-500 rounded-xl"
+                        initial={false}
+                        transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                      />
+                    )}
+                  </motion.button>
+                  <motion.button
+                    type="button"
+                    onClick={() => setRole("instructor")}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    className={`relative p-4 rounded-xl border-2 transition-all ${
+                      role === "instructor"
+                        ? "border-purple-500 bg-purple-500/20"
+                        : "border-slate-700 bg-slate-800/50 hover:border-slate-600"
+                    }`}
+                  >
+                    <GraduationCap className={`h-6 w-6 mb-2 ${role === "instructor" ? "text-purple-400" : "text-muted-foreground"}`} />
+                    <div className={`font-semibold ${role === "instructor" ? "text-purple-400" : "text-muted-foreground"}`}>
+                      Instructor
+                    </div>
+                    <div className="text-xs text-muted-foreground mt-1">Teach & Earn</div>
+                    {role === "instructor" && (
+                      <motion.div
+                        layoutId="role-indicator"
+                        className="absolute inset-0 border-2 border-purple-500 rounded-xl"
+                        initial={false}
+                        transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                      />
+                    )}
+                  </motion.button>
+                </div>
+              </div>
+
+              {/* Full Name */}
+              <div className="space-y-2">
+                <Label htmlFor="fullName" className="text-base font-semibold">
+                  Full Name
+                </Label>
+                <Input
+                  id="fullName"
+                  type="text"
+                  placeholder="John Doe"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  required
+                  disabled={isLoading}
+                  className="h-12 text-base rounded-xl border-2 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
+                />
+              </div>
+
+              {/* Email */}
               <div className="space-y-2">
                 <Label htmlFor="email" className="text-base font-semibold">
                   Email
@@ -124,6 +268,8 @@ export default function SignUpPage() {
                   />
                 </div>
               </div>
+
+              {/* Password */}
               <div className="space-y-2">
                 <Label htmlFor="password" className="text-base font-semibold">
                   Password
@@ -153,6 +299,8 @@ export default function SignUpPage() {
                   </div>
                 )}
               </div>
+
+              {/* Confirm Password */}
               <div className="space-y-2">
                 <Label htmlFor="confirmPassword" className="text-base font-semibold">
                   Confirm Password
@@ -185,6 +333,7 @@ export default function SignUpPage() {
                   <div className="text-xs text-red-500 mt-1">Passwords do not match</div>
                 )}
               </div>
+
               {error && (
                 <motion.div
                   initial={{ opacity: 0, y: -10 }}
@@ -194,16 +343,17 @@ export default function SignUpPage() {
                   {error}
                 </motion.div>
               )}
+
               <Button
                 type="submit"
                 className="w-full h-12 text-base font-semibold rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 shadow-lg hover:shadow-xl hover:shadow-purple-500/50 transition-all duration-300 disabled:opacity-50"
-                disabled={isLoading || !passwordStrength}
+                disabled={isLoading || !passwordStrength || !fullName.trim()}
               >
                 {isLoading ? (
                   "Creating account..."
                 ) : (
                   <span className="flex items-center justify-center gap-2">
-                    Sign Up
+                    Sign Up as {role === "instructor" ? "Instructor" : "Student"}
                     <ArrowRight className="h-5 w-5" />
                   </span>
                 )}

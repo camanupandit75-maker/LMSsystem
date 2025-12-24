@@ -65,3 +65,4 @@ create index if not exists videos_created_at_idx on videos(created_at desc);
 --   to authenticated
 --   using (bucket_id = 'videos' AND (storage.foldername(name))[1] = auth.uid()::text);
 
+

@@ -14,3 +14,4 @@ export async function generateTranscription(videoUrl: string): Promise<string> {
   return "Placeholder transcript: This is a sample transcription of the video content. In production, this would be generated using OpenAI Whisper API or a similar transcription service.";
 }
 
+

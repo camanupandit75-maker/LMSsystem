@@ -44,3 +44,4 @@ Stop the server (Ctrl+C) and run:
 For detailed Supabase setup, see SETUP_SUPABASE.md
 ===========================================
 
+

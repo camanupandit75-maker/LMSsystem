@@ -13,3 +13,4 @@ export async function generateSummary(transcript: string): Promise<string> {
   return "Placeholder summary: This video covers important topics related to the subject matter. Key points include main concepts, practical applications, and real-world examples. In production, this would be generated using OpenAI GPT API.";
 }
 
+

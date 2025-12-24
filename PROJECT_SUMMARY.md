@@ -147,3 +147,4 @@ All core features are implemented and documented. The project is ready for users
 2. Configure Supabase
 3. Start developing!
 
+

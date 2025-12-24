@@ -20,3 +20,4 @@ echo "5. Edit .env.local and replace the placeholder values"
 echo ""
 echo "Then restart your dev server: npm run dev"
 
+

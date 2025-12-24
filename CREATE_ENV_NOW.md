@@ -66,3 +66,4 @@ Your app should now work. If you still see errors, make sure:
 
 **Need help?** See `SETUP_SUPABASE.md` for detailed database setup.
 
+
