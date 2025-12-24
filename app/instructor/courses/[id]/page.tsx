@@ -3,7 +3,8 @@ import { redirect } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
-import { ArrowLeft, Plus, Edit, Play } from 'lucide-react'
+import { ArrowLeft, Plus, Edit, Play, Globe, EyeOff } from 'lucide-react'
+import { PublishButton } from './publish-button'
 
 export default async function ManageCoursePage({ params }: { params: { id: string } }) {
   const supabase = await createClient()
@@ -41,14 +42,33 @@ export default async function ManageCoursePage({ params }: { params: { id: strin
 
         <Card className="mb-6 border-0 shadow-xl rounded-2xl">
           <CardHeader>
-            <CardTitle className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
-              {course.title}
-            </CardTitle>
+            <div className="flex items-start justify-between">
+              <div className="flex-1">
+                <CardTitle className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent mb-2">
+                  {course.title}
+                </CardTitle>
+                <p className="text-gray-600 text-lg">{course.description}</p>
+              </div>
+              <div className="flex gap-2">
+                <PublishButton courseId={params.id} currentStatus={course.status} />
+                <Link href={`/instructor/courses/${params.id}/edit`}>
+                  <Button variant="outline" className="rounded-xl">
+                    <Edit className="mr-2 h-4 w-4" />
+                    Edit Course
+                  </Button>
+                </Link>
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
-            <p className="text-gray-600 mb-4 text-lg">{course.description}</p>
             <div className="flex flex-wrap gap-4 text-sm">
-              <span className="px-3 py-1 rounded-full bg-purple-100 text-purple-700 font-semibold">
+              <span className={`px-3 py-1 rounded-full font-semibold ${
+                course.status === 'published' 
+                  ? 'bg-green-100 text-green-700' 
+                  : course.status === 'draft'
+                  ? 'bg-yellow-100 text-yellow-700'
+                  : 'bg-gray-100 text-gray-700'
+              }`}>
                 Status: {course.status}
               </span>
               <span className="px-3 py-1 rounded-full bg-green-100 text-green-700 font-semibold">
@@ -60,6 +80,16 @@ export default async function ManageCoursePage({ params }: { params: { id: strin
               <span className="px-3 py-1 rounded-full bg-orange-100 text-orange-700 font-semibold">
                 👥 {course.enrollment_count} students
               </span>
+              {course.category && (
+                <span className="px-3 py-1 rounded-full bg-purple-100 text-purple-700 font-semibold">
+                  📂 {course.category}
+                </span>
+              )}
+              {course.level && (
+                <span className="px-3 py-1 rounded-full bg-indigo-100 text-indigo-700 font-semibold capitalize">
+                  🎯 {course.level}
+                </span>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -136,4 +166,3 @@ export default async function ManageCoursePage({ params }: { params: { id: strin
     </div>
   )
 }
-
