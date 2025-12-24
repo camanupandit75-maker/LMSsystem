@@ -1,0 +1,46 @@
+===========================================
+QUICK FIX: Create .env.local File
+===========================================
+
+The error you're seeing is because the Supabase environment variables are missing.
+
+STEP 1: Create the file manually
+---------------------------------
+In your terminal, run this command:
+
+  touch .env.local
+
+Or create it in your code editor.
+
+STEP 2: Add this content to .env.local
+---------------------------------------
+Copy and paste this into the file:
+
+NEXT_PUBLIC_SUPABASE_URL=https://your-project-id.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here
+
+STEP 3: Get your Supabase credentials
+-------------------------------------
+1. Go to: https://supabase.com/dashboard
+2. Create a new project (or select existing)
+3. Go to: Settings → API
+4. Copy:
+   - Project URL → Replace NEXT_PUBLIC_SUPABASE_URL
+   - anon public key → Replace NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+STEP 4: Update .env.local with real values
+------------------------------------------
+Your file should look like:
+
+NEXT_PUBLIC_SUPABASE_URL=https://abcdefghijklmnop.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFiY2RlZmdoaWprbG1ub3AiLCJyb2xlIjoiYW5vbiIsImlhdCI6MTYxNjIzOTAyMiwiZXhwIjoxOTMxODE1MDIyfQ.xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
+STEP 5: Restart the dev server
+------------------------------
+Stop the server (Ctrl+C) and run:
+  npm run dev
+
+===========================================
+For detailed Supabase setup, see SETUP_SUPABASE.md
+===========================================
+
