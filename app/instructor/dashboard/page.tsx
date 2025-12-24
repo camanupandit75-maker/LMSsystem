@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
+import { DashboardSwitcher } from '@/components/DashboardSwitcher'
 
 export default async function InstructorDashboard() {
   const supabase = await createClient()
@@ -35,6 +36,7 @@ export default async function InstructorDashboard() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-cyan-50 p-8">
       <div className="max-w-7xl mx-auto">
+        <DashboardSwitcher />
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">

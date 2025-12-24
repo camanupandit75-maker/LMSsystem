@@ -22,6 +22,8 @@ import type { UserRole } from "@/lib/types/database.types"
 export function Navbar() {
   const [user, setUser] = useState<any>(null)
   const [userRole, setUserRole] = useState<UserRole | null>(null)
+  const [userProfile, setUserProfile] = useState<any>(null)
+  const [hasEnrollments, setHasEnrollments] = useState(false)
   const [mounted, setMounted] = useState(false)
   const [scrolled, setScrolled] = useState(false)
   const { theme, setTheme } = useTheme()
@@ -38,9 +40,11 @@ export function Navbar() {
     } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null)
       if (session?.user) {
-        fetchUserRole(session.user.id)
+        fetchUserData(session.user.id)
       } else {
         setUserRole(null)
+        setUserProfile(null)
+        setHasEnrollments(false)
       }
     })
 
@@ -61,18 +65,29 @@ export function Navbar() {
     } = await supabase.auth.getUser()
     setUser(user)
     if (user) {
-      await fetchUserRole(user.id)
+      await fetchUserData(user.id)
     }
   }
 
-  async function fetchUserRole(userId: string) {
+  async function fetchUserData(userId: string) {
     const { data: profile } = await supabase
       .from("user_profiles")
-      .select("role")
+      .select("*")
       .eq("id", userId)
       .single()
     
     setUserRole(profile?.role || null)
+    setUserProfile(profile)
+
+    // Check if user has enrollments (for multi-role access)
+    const { data: enrollments } = await supabase
+      .from("enrollments")
+      .select("id")
+      .eq("student_id", userId)
+      .eq("is_active", true)
+      .limit(1)
+    
+    setHasEnrollments(enrollments && enrollments.length > 0)
   }
 
   async function handleLogout() {
@@ -289,17 +304,34 @@ export function Navbar() {
                       </div>
                     </DropdownMenuLabel>
                     <DropdownMenuSeparator className="bg-white/10" />
-                    <DropdownMenuItem
-                      asChild
-                      className="rounded-lg cursor-pointer hover:bg-white/10 transition-colors"
-                    >
-                      <Link href={getDashboardPath()} className="flex items-center">
-                        <Video className="mr-2 h-4 w-4" />
-                        Dashboard
-                      </Link>
-                    </DropdownMenuItem>
+                    
+                    {/* Show dashboards based on role and enrollments */}
+                    
+                    {/* Admin Dashboard */}
+                    {userRole === "admin" && (
+                      <DropdownMenuItem
+                        asChild
+                        className="rounded-lg cursor-pointer hover:bg-white/10 transition-colors"
+                      >
+                        <Link href="/admin/dashboard" className="flex items-center">
+                          <Settings className="mr-2 h-4 w-4" />
+                          👑 Admin Panel
+                        </Link>
+                      </DropdownMenuItem>
+                    )}
+
+                    {/* Instructor Dashboard */}
                     {userRole === "instructor" && (
                       <>
+                        <DropdownMenuItem
+                          asChild
+                          className="rounded-lg cursor-pointer hover:bg-white/10 transition-colors"
+                        >
+                          <Link href="/instructor/dashboard" className="flex items-center">
+                            <GraduationCap className="mr-2 h-4 w-4" />
+                            🎓 Instructor Dashboard
+                          </Link>
+                        </DropdownMenuItem>
                         <DropdownMenuItem
                           asChild
                           className="rounded-lg cursor-pointer hover:bg-white/10 transition-colors"
@@ -320,17 +352,30 @@ export function Navbar() {
                         </DropdownMenuItem>
                       </>
                     )}
-                    {userRole === "admin" && (
+
+                    {/* Student Dashboard - Show if role is student OR has enrollments */}
+                    {(userRole === "student" || hasEnrollments) && (
                       <DropdownMenuItem
                         asChild
                         className="rounded-lg cursor-pointer hover:bg-white/10 transition-colors"
                       >
-                        <Link href="/admin/dashboard" className="flex items-center">
-                          <Settings className="mr-2 h-4 w-4" />
-                          Admin Panel
+                        <Link href="/student/dashboard" className="flex items-center">
+                          <BookOpen className="mr-2 h-4 w-4" />
+                          📚 My Learning
                         </Link>
                       </DropdownMenuItem>
                     )}
+
+                    {/* Browse Courses - Always show */}
+                    <DropdownMenuItem
+                      asChild
+                      className="rounded-lg cursor-pointer hover:bg-white/10 transition-colors"
+                    >
+                      <Link href="/courses" className="flex items-center">
+                        <BookOpen className="mr-2 h-4 w-4" />
+                        🔍 Browse Courses
+                      </Link>
+                    </DropdownMenuItem>
                     <DropdownMenuSeparator className="bg-white/10" />
                     <DropdownMenuItem
                       onClick={handleLogout}

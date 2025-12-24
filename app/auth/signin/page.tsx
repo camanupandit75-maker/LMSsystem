@@ -45,11 +45,11 @@ export default function SignInPage() {
           .eq('id', session.user.id)
           .single()
 
-        // Redirect based on role
-        if (profile?.role === 'instructor') {
-          router.push('/instructor/dashboard')
-        } else if (profile?.role === 'admin') {
+        // Redirect based on role (priority: Admin > Instructor > Student)
+        if (profile?.role === 'admin') {
           router.push('/admin/dashboard')
+        } else if (profile?.role === 'instructor') {
+          router.push('/instructor/dashboard')
         } else {
           router.push('/student/dashboard')
         }
