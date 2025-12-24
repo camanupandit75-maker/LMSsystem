@@ -1,0 +1,283 @@
+import { createClient } from '@/lib/supabase/server'
+import { redirect } from 'next/navigation'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+
+export default async function AdminDashboard() {
+  const supabase = await createClient()
+  
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session) redirect('/auth/signin')
+
+  // Check admin role
+  const { data: profile } = await supabase
+    .from('user_profiles')
+    .select('role')
+    .eq('id', session.user.id)
+    .single()
+
+  if (profile?.role !== 'admin') {
+    redirect('/') // Not admin, redirect
+  }
+
+  // Get all users
+  const { data: users } = await supabase
+    .from('user_profiles')
+    .select('*')
+    .order('created_at', { ascending: false })
+    .limit(10)
+
+  // Get all courses
+  const { data: courses } = await supabase
+    .from('courses')
+    .select(`
+      *,
+      instructor:user_profiles!courses_instructor_id_fkey(full_name)
+    `)
+    .order('created_at', { ascending: false })
+    .limit(10)
+
+  // Get recent transactions
+  const { data: transactions } = await supabase
+    .from('transactions')
+    .select(`
+      *,
+      student:user_profiles!transactions_student_id_fkey(full_name),
+      instructor:user_profiles!transactions_instructor_id_fkey(full_name),
+      course:courses(title)
+    `)
+    .order('created_at', { ascending: false })
+    .limit(10)
+
+  // Count by role
+  const instructorCount = users?.filter(u => u.role === 'instructor').length || 0
+  const studentCount = users?.filter(u => u.role === 'student').length || 0
+
+  // Calculate totals
+  const totalRevenue = transactions?.reduce((sum, t) => 
+    t.status === 'completed' ? sum + t.amount : sum, 0
+  ) || 0
+
+  const totalCourses = courses?.length || 0
+  const publishedCourses = courses?.filter(c => c.status === 'published').length || 0
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 p-8">
+      <div className="max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="mb-8">
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-gray-900 to-blue-600 bg-clip-text text-transparent">
+            Admin Dashboard 👑
+          </h1>
+          <p className="text-gray-600 mt-2">Platform overview and management</p>
+        </div>
+
+        {/* Stats Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+          <Card className="border-l-4 border-blue-600 hover:shadow-lg transition-shadow">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium text-gray-600">Total Users</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold">{users?.length || 0}</div>
+              <p className="text-xs text-gray-500 mt-1">
+                {instructorCount} instructors, {studentCount} students
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="border-l-4 border-green-600 hover:shadow-lg transition-shadow">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium text-gray-600">Total Revenue</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-green-600">
+                ${totalRevenue.toFixed(2)}
+              </div>
+              <p className="text-xs text-gray-500 mt-1">All-time earnings</p>
+            </CardContent>
+          </Card>
+
+          <Card className="border-l-4 border-purple-600 hover:shadow-lg transition-shadow">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium text-gray-600">Total Courses</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold">{totalCourses}</div>
+              <p className="text-xs text-gray-500 mt-1">
+                {publishedCourses} published
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="border-l-4 border-orange-600 hover:shadow-lg transition-shadow">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium text-gray-600">Transactions</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold">{transactions?.length || 0}</div>
+              <p className="text-xs text-gray-500 mt-1">Recent activity</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Recent Users */}
+        <Card className="mb-8 border-0 shadow-xl rounded-2xl">
+          <CardHeader>
+            <CardTitle className="text-2xl font-bold">Recent Users</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left py-3 px-4 font-semibold">Name</th>
+                    <th className="text-left py-3 px-4 font-semibold">Role</th>
+                    <th className="text-left py-3 px-4 font-semibold">Enrolled Courses</th>
+                    <th className="text-left py-3 px-4 font-semibold">Joined</th>
+                    <th className="text-left py-3 px-4 font-semibold">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {users && users.length > 0 ? (
+                    users.map((user) => (
+                      <tr key={user.id} className="border-b hover:bg-gray-50 transition-colors">
+                        <td className="py-3 px-4 font-medium">{user.full_name}</td>
+                        <td className="py-3 px-4">
+                          <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                            user.role === 'admin' 
+                              ? 'bg-red-100 text-red-700'
+                              : user.role === 'instructor'
+                              ? 'bg-purple-100 text-purple-700'
+                              : 'bg-blue-100 text-blue-700'
+                          }`}>
+                            {user.role}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4">{user.enrolled_courses_count}</td>
+                        <td className="py-3 px-4 text-sm text-gray-600">
+                          {new Date(user.created_at).toLocaleDateString()}
+                        </td>
+                        <td className="py-3 px-4">
+                          <Button variant="outline" size="sm" className="rounded-xl">View</Button>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={5} className="py-8 text-center text-gray-500">
+                        No users yet
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Recent Courses */}
+        <Card className="mb-8 border-0 shadow-xl rounded-2xl">
+          <CardHeader>
+            <CardTitle className="text-2xl font-bold">Recent Courses</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {courses && courses.length > 0 ? (
+              <div className="space-y-3">
+                {courses.map((course: any) => (
+                  <div key={course.id} className="border-2 rounded-xl p-4 hover:bg-gray-50 transition-all hover:border-purple-300">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <h3 className="font-semibold text-lg">{course.title}</h3>
+                        <p className="text-sm text-gray-600 mt-1">
+                          By {course.instructor?.full_name || 'Unknown'}
+                        </p>
+                        <div className="flex gap-4 mt-2 text-sm text-gray-500">
+                          <span>💰 ${course.price.toFixed(2)}</span>
+                          <span>👥 {course.enrollment_count} students</span>
+                          <span>📹 {course.total_videos} videos</span>
+                        </div>
+                      </div>
+                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                        course.status === 'published'
+                          ? 'bg-green-100 text-green-700'
+                          : 'bg-yellow-100 text-yellow-700'
+                      }`}>
+                        {course.status}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-12 text-gray-500">
+                <div className="text-4xl mb-2">📚</div>
+                <p>No courses yet</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Recent Transactions */}
+        <Card className="border-0 shadow-xl rounded-2xl">
+          <CardHeader>
+            <CardTitle className="text-2xl font-bold">Recent Transactions</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left py-3 px-4 font-semibold">Type</th>
+                    <th className="text-left py-3 px-4 font-semibold">Student</th>
+                    <th className="text-left py-3 px-4 font-semibold">Course</th>
+                    <th className="text-left py-3 px-4 font-semibold">Amount</th>
+                    <th className="text-left py-3 px-4 font-semibold">Status</th>
+                    <th className="text-left py-3 px-4 font-semibold">Date</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {transactions && transactions.length > 0 ? (
+                    transactions.map((txn: any) => (
+                      <tr key={txn.id} className="border-b hover:bg-gray-50 transition-colors">
+                        <td className="py-3 px-4">
+                          <span className="text-xs font-medium capitalize">{txn.type}</span>
+                        </td>
+                        <td className="py-3 px-4">{txn.student?.full_name || '-'}</td>
+                        <td className="py-3 px-4">{txn.course?.title || '-'}</td>
+                        <td className="py-3 px-4 font-semibold text-green-600">
+                          ${txn.amount.toFixed(2)}
+                        </td>
+                        <td className="py-3 px-4">
+                          <span className={`px-2 py-1 rounded text-xs font-medium ${
+                            txn.status === 'completed'
+                              ? 'bg-green-100 text-green-700'
+                              : txn.status === 'pending'
+                              ? 'bg-yellow-100 text-yellow-700'
+                              : 'bg-red-100 text-red-700'
+                          }`}>
+                            {txn.status}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 text-sm text-gray-600">
+                          {new Date(txn.created_at).toLocaleDateString()}
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={6} className="py-8 text-center text-gray-500">
+                        No transactions yet
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  )
+}
+
