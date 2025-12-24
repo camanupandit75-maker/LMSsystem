@@ -144,3 +144,4 @@ export function EnrollButton({ courseId, courseSlug, price, instructorId }: Enro
   )
 }
 
+

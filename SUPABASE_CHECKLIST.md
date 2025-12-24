@@ -172,3 +172,4 @@ After checking all items:
    - Check `supabase-setup.sql` for policy creation
    - Run the SQL script again if needed
 
+

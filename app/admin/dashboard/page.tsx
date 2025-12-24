@@ -38,6 +38,29 @@ export default async function AdminDashboard() {
     .order('created_at', { ascending: false })
     .limit(10)
 
+  // Get video counts for each course
+  const courseIds = courses?.map(c => c.id) || []
+  let videoCountsByCourse: Record<string, number> = {}
+  
+  if (courseIds.length > 0) {
+    const { data: videoCounts } = await supabase
+      .from('course_videos')
+      .select('course_id')
+      .in('course_id', courseIds)
+
+    // Group by course_id to count videos per course
+    videoCountsByCourse = videoCounts?.reduce((acc: any, video) => {
+      acc[video.course_id] = (acc[video.course_id] || 0) + 1
+      return acc
+    }, {}) || {}
+  }
+
+  // Merge video counts with courses
+  const coursesWithCounts = courses?.map(course => ({
+    ...course,
+    actual_video_count: videoCountsByCourse[course.id] || 0
+  }))
+
   // Get recent transactions
   const { data: transactions } = await supabase
     .from('transactions')
@@ -184,9 +207,9 @@ export default async function AdminDashboard() {
             <CardTitle className="text-2xl font-bold">Recent Courses</CardTitle>
           </CardHeader>
           <CardContent>
-            {courses && courses.length > 0 ? (
+            {coursesWithCounts && coursesWithCounts.length > 0 ? (
               <div className="space-y-3">
-                {courses.map((course: any) => (
+                {coursesWithCounts.map((course: any) => (
                   <div key={course.id} className="border-2 rounded-xl p-4 hover:bg-gray-50 transition-all hover:border-purple-300">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
@@ -197,7 +220,7 @@ export default async function AdminDashboard() {
                         <div className="flex gap-4 mt-2 text-sm text-gray-500">
                           <span>💰 ${course.price.toFixed(2)}</span>
                           <span>👥 {course.enrollment_count} students</span>
-                          <span>📹 {course.total_videos} videos</span>
+                          <span>📹 {course.actual_video_count} videos</span>
                         </div>
                       </div>
                       <span className={`px-3 py-1 rounded-full text-xs font-medium ${

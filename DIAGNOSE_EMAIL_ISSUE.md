@@ -115,3 +115,4 @@ console.log('User confirmed:', authData?.user?.confirmed_at)
 
 This allows immediate sign-in without email verification.
 
+

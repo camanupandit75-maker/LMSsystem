@@ -134,3 +134,4 @@ After signing up, check the browser console for:
 
 This will tell you exactly what's happening with your email confirmation.
 
+

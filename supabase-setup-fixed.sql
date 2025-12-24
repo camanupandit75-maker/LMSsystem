@@ -428,3 +428,4 @@ CREATE TRIGGER auto_create_transaction_split
 -- 4. Make it Public
 -- 5. Click "Create bucket"
 
+

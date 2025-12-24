@@ -81,3 +81,4 @@
 - Callback route is ready for when email confirmation is enabled
 - All error handling includes helpful console logs
 
+
