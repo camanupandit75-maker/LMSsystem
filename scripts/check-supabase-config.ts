@@ -96,3 +96,4 @@ async function checkSupabaseConfig() {
 checkSupabaseConfig().catch(console.error)
 
 
+

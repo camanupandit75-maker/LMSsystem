@@ -429,3 +429,4 @@ CREATE TRIGGER auto_create_transaction_split
 -- 5. Click "Create bucket"
 
 
+

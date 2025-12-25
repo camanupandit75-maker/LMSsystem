@@ -10,6 +10,11 @@ export interface UserProfile {
   full_name: string;
   avatar_url?: string;
   bio?: string;
+  pan_number?: string;
+  gstn?: string;
+  business_name?: string;
+  pan_verified: boolean;
+  gstn_verified: boolean;
   bank_account_name?: string;
   bank_account_number?: string;
   bank_routing_number?: string;
@@ -25,6 +30,10 @@ export interface InstructorSubscription {
   instructor_id: string;
   tier: SubscriptionTier;
   max_courses: number;
+  bonus_courses?: number;
+  bonus_granted_by?: string;
+  bonus_granted_at?: string;
+  bonus_reason?: string;
   used_courses: number;
   price_paid: number;
   subscription_start_date: string;
@@ -70,6 +79,11 @@ export interface CourseVideo {
   order_index: number;
   duration_minutes?: number;
   is_preview: boolean;
+  is_approved?: boolean;
+  approval_status?: 'pending' | 'approved' | 'rejected';
+  rejection_reason?: string;
+  moderated_by?: string;
+  moderated_at?: string;
   transcript?: string;
   summary?: string;
   quiz_data?: any;
@@ -136,5 +150,6 @@ export interface InstructorEarningsSummary {
   paid_out: number;
   total_enrollments: number;
 }
+
 
 

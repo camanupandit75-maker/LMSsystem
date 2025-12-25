@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import Link from 'next/link'
 import { DashboardSwitcher } from '@/components/DashboardSwitcher'
 
 export default async function AdminDashboard() {
@@ -184,7 +185,13 @@ export default async function AdminDashboard() {
                           {new Date(user.created_at).toLocaleDateString()}
                         </td>
                         <td className="py-3 px-4">
-                          <Button variant="outline" size="sm" className="rounded-xl">View</Button>
+                          {user.role === 'instructor' ? (
+                            <Link href={`/admin/instructors/${user.id}`}>
+                              <Button variant="outline" size="sm" className="rounded-xl">Manage</Button>
+                            </Link>
+                          ) : (
+                            <Button variant="outline" size="sm" className="rounded-xl">View</Button>
+                          )}
                         </td>
                       </tr>
                     ))
@@ -197,6 +204,41 @@ export default async function AdminDashboard() {
                   )}
                 </tbody>
               </table>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Instructor Management */}
+        <Card className="mb-8 border-0 shadow-xl rounded-2xl">
+          <CardHeader>
+            <CardTitle className="text-2xl font-bold">Instructor Management</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {users?.filter(u => u.role === 'instructor').length > 0 ? (
+                users.filter(u => u.role === 'instructor').map((instructor) => (
+                  <div key={instructor.id} className="border-2 rounded-xl p-4 hover:bg-gray-50 transition-colors hover:border-purple-300">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <h3 className="font-semibold text-lg">{instructor.full_name}</h3>
+                        <p className="text-sm text-gray-600 mt-1">
+                          Enrolled Courses: {instructor.enrolled_courses_count}
+                        </p>
+                      </div>
+                      <Link href={`/admin/instructors/${instructor.id}`}>
+                        <Button variant="outline" size="sm" className="rounded-xl">
+                          Manage Instructor
+                        </Button>
+                      </Link>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="text-center py-12 text-gray-500">
+                  <div className="text-4xl mb-2">🎓</div>
+                  <p>No instructors yet</p>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>

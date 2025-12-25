@@ -18,10 +18,27 @@ export default function SignUpPage() {
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
   const [role, setRole] = useState<UserRole>("student")
+  // Instructor-specific fields
+  const [panNumber, setPanNumber] = useState("")
+  const [gstn, setGstn] = useState("")
+  const [businessName, setBusinessName] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
   const supabase = createClient()
+
+  // PAN Validation (Indian format: ABCDE1234F)
+  const validatePAN = (pan: string): boolean => {
+    const panRegex = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/
+    return panRegex.test(pan.toUpperCase())
+  }
+
+  // GSTN Validation (Indian format: 22AAAAA0000A1Z5)
+  const validateGSTN = (gstin: string): boolean => {
+    if (!gstin) return true // Optional field
+    const gstRegex = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/
+    return gstRegex.test(gstin.toUpperCase())
+  }
 
   async function handleSignUp(e: React.FormEvent) {
     e.preventDefault()
@@ -42,6 +59,30 @@ export default function SignUpPage() {
       return
     }
 
+    // Instructor-specific validation
+    if (role === "instructor") {
+      // PAN is mandatory for instructors
+      if (!panNumber) {
+        setError("PAN Number is required for instructors")
+        setIsLoading(false)
+        return
+      }
+
+      // Validate PAN format
+      if (!validatePAN(panNumber)) {
+        setError("Invalid PAN format. Expected format: ABCDE1234F")
+        setIsLoading(false)
+        return
+      }
+
+      // Validate GSTN if provided
+      if (gstn && !validateGSTN(gstn)) {
+        setError("Invalid GSTN format. Expected format: 22AAAAA0000A1Z5")
+        setIsLoading(false)
+        return
+      }
+    }
+
     try {
       // 1. Create auth user (NO email confirmation for now)
       const { data: authData, error: authError } = await supabase.auth.signUp({
@@ -54,7 +95,7 @@ export default function SignUpPage() {
 
       console.log("Auth user created:", authData.user.id)
 
-      // 2. Create user profile
+      // 2. Create user profile with PAN/GSTN
       const { error: profileError } = await supabase
         .from("user_profiles")
         .insert({
@@ -62,6 +103,11 @@ export default function SignUpPage() {
           role: role,
           full_name: fullName.trim(),
           avatar_url: null,
+          pan_number: role === "instructor" ? panNumber.toUpperCase() : null,
+          gstn: role === "instructor" && gstn ? gstn.toUpperCase() : null,
+          business_name: role === "instructor" && businessName ? businessName.trim() : null,
+          pan_verified: false,
+          gstn_verified: false,
         })
 
       if (profileError) {
@@ -116,13 +162,20 @@ export default function SignUpPage() {
       
     } catch (err: any) {
       console.error("Signup error:", err)
-      setError(err.message || "Failed to create account")
+      if (err.message?.includes("unique_pan") || err.code === "23505") {
+        setError("This PAN number is already registered. Each PAN can only be used once.")
+      } else {
+        setError(err.message || "Failed to create account")
+      }
     } finally {
       setIsLoading(false)
     }
   }
 
   const passwordStrength = password.length >= 6 && password === confirmPassword
+  const isPanValid = role === "student" || (panNumber && validatePAN(panNumber))
+  const isGstnValid = !gstn || validateGSTN(gstn)
+  const canSubmit = passwordStrength && fullName.trim() && isPanValid && isGstnValid
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center p-4 relative overflow-hidden">
@@ -269,6 +322,102 @@ export default function SignUpPage() {
                 </div>
               </div>
 
+              {/* Instructor-specific fields */}
+              {role === "instructor" && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="bg-blue-500/10 border-2 border-blue-500/30 rounded-xl p-4 space-y-4"
+                >
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-2xl">📋</span>
+                    <p className="text-sm font-bold text-blue-400">
+                      Tax Information (Required for instructors)
+                    </p>
+                  </div>
+
+                  {/* PAN Number - Mandatory */}
+                  <div className="space-y-2">
+                    <Label htmlFor="pan" className="flex items-center gap-1 text-base font-semibold">
+                      PAN Number <span className="text-red-500 text-lg">*</span>
+                    </Label>
+                    <Input
+                      id="pan"
+                      value={panNumber}
+                      onChange={(e) => setPanNumber(e.target.value.toUpperCase())}
+                      placeholder="ABCDE1234F"
+                      maxLength={10}
+                      required
+                      disabled={isLoading}
+                      className="uppercase font-mono h-12 text-base rounded-xl border-2 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Format: 5 letters + 4 digits + 1 letter (e.g., ABCDE1234F)
+                    </p>
+                    {panNumber && !validatePAN(panNumber) && (
+                      <p className="text-xs text-red-500 flex items-center gap-1">
+                        <span>❌</span> Invalid PAN format
+                      </p>
+                    )}
+                    {panNumber && validatePAN(panNumber) && (
+                      <p className="text-xs text-green-500 flex items-center gap-1">
+                        <CheckCircle2 className="h-3 w-3" />
+                        Valid PAN format
+                      </p>
+                    )}
+                  </div>
+
+                  {/* GSTN - Optional */}
+                  <div className="space-y-2">
+                    <Label htmlFor="gstn" className="text-base font-semibold">
+                      GSTN (Optional)
+                    </Label>
+                    <Input
+                      id="gstn"
+                      value={gstn}
+                      onChange={(e) => setGstn(e.target.value.toUpperCase())}
+                      placeholder="22AAAAA0000A1Z5"
+                      maxLength={15}
+                      disabled={isLoading}
+                      className="uppercase font-mono h-12 text-base rounded-xl border-2 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      15-character GST number (only if GST-registered)
+                    </p>
+                    {gstn && !validateGSTN(gstn) && (
+                      <p className="text-xs text-red-500 flex items-center gap-1">
+                        <span>❌</span> Invalid GSTN format
+                      </p>
+                    )}
+                    {gstn && validateGSTN(gstn) && (
+                      <p className="text-xs text-green-500 flex items-center gap-1">
+                        <CheckCircle2 className="h-3 w-3" />
+                        Valid GSTN format
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Business Name - Optional */}
+                  <div className="space-y-2">
+                    <Label htmlFor="businessName" className="text-base font-semibold">
+                      Business Name (Optional)
+                    </Label>
+                    <Input
+                      id="businessName"
+                      value={businessName}
+                      onChange={(e) => setBusinessName(e.target.value)}
+                      placeholder="Your Company Name"
+                      disabled={isLoading}
+                      className="h-12 text-base rounded-xl border-2 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Used for GST invoices if GSTN is provided
+                    </p>
+                  </div>
+                </motion.div>
+              )}
+
               {/* Password */}
               <div className="space-y-2">
                 <Label htmlFor="password" className="text-base font-semibold">
@@ -347,7 +496,7 @@ export default function SignUpPage() {
               <Button
                 type="submit"
                 className="w-full h-12 text-base font-semibold rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 shadow-lg hover:shadow-xl hover:shadow-purple-500/50 transition-all duration-300 disabled:opacity-50"
-                disabled={isLoading || !passwordStrength || !fullName.trim()}
+                disabled={isLoading || !canSubmit}
               >
                 {isLoading ? (
                   "Creating account..."
