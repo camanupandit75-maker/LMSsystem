@@ -24,7 +24,10 @@ export default async function InstructorCoursesPage() {
   // Get all courses for this instructor
   const { data: courses } = await supabase
     .from('courses')
-    .select('*')
+    .select(`
+      *,
+      category:course_categories(id, name, slug, icon)
+    `)
     .eq('instructor_id', session.user.id)
     .order('created_at', { ascending: false })
 
@@ -146,15 +149,18 @@ export default async function InstructorCoursesPage() {
                           <p className="text-sm text-gray-600 mb-3 line-clamp-2">{course.description}</p>
                         )}
                         <div className="flex flex-wrap gap-3 mt-2 text-xs text-gray-500">
+                          {course.category && (
+                            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-700">
+                              <span>{course.category.icon || '📂'}</span>
+                              <span>{course.category.name}</span>
+                            </span>
+                          )}
                           <span className="px-2 py-1 rounded bg-gray-100">📹 {course.total_videos || 0} videos</span>
                           {course.total_duration_minutes > 0 && (
                             <span className="px-2 py-1 rounded bg-gray-100">⏱️ {Math.floor(course.total_duration_minutes / 60)}h {course.total_duration_minutes % 60}m</span>
                           )}
                           <span className="px-2 py-1 rounded bg-gray-100">👥 {course.enrollment_count || 0} students</span>
                           <span className="px-2 py-1 rounded bg-gray-100">💰 ${course.price}</span>
-                          {course.category && (
-                            <span className="px-2 py-1 rounded bg-purple-100 text-purple-700">📂 {course.category}</span>
-                          )}
                         </div>
                       </div>
                       <div className="flex gap-2 ml-4">

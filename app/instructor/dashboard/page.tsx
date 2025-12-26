@@ -30,7 +30,10 @@ export default async function InstructorDashboard() {
   // Get courses
   const { data: courses } = await supabase
     .from('courses')
-    .select('*')
+    .select(`
+      *,
+      category:course_categories(id, name, slug, icon)
+    `)
     .eq('instructor_id', session.user.id)
     .order('created_at', { ascending: false })
 
@@ -152,11 +155,17 @@ export default async function InstructorDashboard() {
                             )}
                           </div>
                         )}
-                        <div className="flex gap-4 mt-3 text-sm text-gray-500">
-                          <span>📹 {course.total_videos} videos</span>
-                          <span>⏱️ {course.total_duration_minutes} mins</span>
-                          <span>👥 {course.enrollment_count} students</span>
-                          <span>💰 ${course.price}</span>
+                        <div className="flex flex-wrap gap-2 mt-3 text-sm">
+                          {course.category && (
+                            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-700">
+                              <span>{course.category.icon || '📂'}</span>
+                              <span>{course.category.name}</span>
+                            </span>
+                          )}
+                          <span className="text-gray-500">📹 {course.total_videos} videos</span>
+                          <span className="text-gray-500">⏱️ {course.total_duration_minutes} mins</span>
+                          <span className="text-gray-500">👥 {course.enrollment_count} students</span>
+                          <span className="text-gray-500">💰 ${course.price}</span>
                         </div>
                       </div>
                       <div className="flex flex-col gap-2 items-end">

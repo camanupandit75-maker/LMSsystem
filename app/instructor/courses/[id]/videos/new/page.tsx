@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
@@ -9,8 +9,10 @@ import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
+import type { CourseCategory } from '@/lib/types/database.types'
 
 export default function AddVideoPage({ params }: { params: { id: string } }) {
   const [title, setTitle] = useState('')
@@ -20,10 +22,54 @@ export default function AddVideoPage({ params }: { params: { id: string } }) {
   const [sectionName, setSectionName] = useState('')
   const [durationMinutes, setDurationMinutes] = useState('')
   const [isPreview, setIsPreview] = useState(false)
+  const [courseCategory, setCourseCategory] = useState<{ name: string; icon?: string; id: string } | null>(null)
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string>('')
+  const [categories, setCategories] = useState<CourseCategory[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const router = useRouter()
   const supabase = createClient()
+
+  // Fetch categories and current course category on mount
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        // Fetch all categories
+        const { data: allCategories, error: categoriesError } = await supabase
+          .from('course_categories')
+          .select('*')
+          .order('name')
+
+        if (!categoriesError && allCategories) {
+          setCategories(allCategories)
+        }
+
+        // Fetch current course category
+        const { data: course, error: courseError } = await supabase
+          .from('courses')
+          .select('category_id')
+          .eq('id', params.id)
+          .single()
+
+        if (!courseError && course?.category_id) {
+          setSelectedCategoryId(course.category_id)
+          
+          // Find the category details
+          const category = allCategories?.find(c => c.id === course.category_id)
+          if (category) {
+            setCourseCategory({
+              id: category.id,
+              name: category.name,
+              icon: category.icon
+            })
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching data:', err)
+      }
+    }
+    fetchData()
+  }, [params.id, supabase])
 
   // Validate Google Drive URL
   const isValidGoogleDriveUrl = (url: string): boolean => {
@@ -118,6 +164,19 @@ export default function AddVideoPage({ params }: { params: { id: string } }) {
         videoData.google_drive_file_id = videoId // Store YouTube ID in same field
       }
 
+      // Update course category if changed
+      if (selectedCategoryId) {
+        const { error: categoryUpdateError } = await supabase
+          .from('courses')
+          .update({ category_id: selectedCategoryId })
+          .eq('id', params.id)
+
+        if (categoryUpdateError) {
+          console.error('Error updating category:', categoryUpdateError)
+          // Don't throw - category update is not critical
+        }
+      }
+
       // Insert video
       const { error: videoError } = await supabase
         .from('course_videos')
@@ -162,15 +221,46 @@ export default function AddVideoPage({ params }: { params: { id: string } }) {
 
         <Card className="bg-white rounded-2xl shadow-xl border border-gray-100">
           <CardHeader>
-            <CardTitle className="text-3xl font-bold text-gradient">
-              Add Video 📹
-            </CardTitle>
-            <p className="text-gray-600 mt-2">
-              Choose your video source and add it to your course
-            </p>
+            <div className="flex items-start justify-between mb-4">
+              <div className="flex-1">
+                <CardTitle className="text-3xl font-bold text-gradient">
+                  Add Video 📹
+                </CardTitle>
+                <p className="text-gray-600 mt-2">
+                  Choose your video source and add it to your course
+                </p>
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
+              {/* Course Category Selection */}
+              <div>
+                <Label htmlFor="category" className="text-base font-semibold">Course Category *</Label>
+                <Select 
+                  value={selectedCategoryId} 
+                  onValueChange={setSelectedCategoryId}
+                  disabled={loading}
+                >
+                  <SelectTrigger className="mt-2 h-12 rounded-xl">
+                    <SelectValue placeholder="Select a category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categories.map((cat) => (
+                      <SelectItem key={cat.id} value={cat.id}>
+                        <span className="flex items-center gap-2">
+                          <span>{cat.icon || '📂'}</span>
+                          <span>{cat.name}</span>
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-gray-500 mt-1.5">
+                  This category will be applied to your course and helps students find your content
+                </p>
+              </div>
+
               {/* Video Title */}
               <div>
                 <Label htmlFor="title" className="text-base font-semibold">Video Title *</Label>

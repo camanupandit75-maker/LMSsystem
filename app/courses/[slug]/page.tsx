@@ -24,7 +24,8 @@ export default async function CourseDetailPage({ params }: { params: { slug: str
         full_name,
         avatar_url,
         bio
-      )
+      ),
+      category:course_categories(id, name, slug, icon)
     `)
     .eq('slug', params.slug)
     .eq('status', 'published')
@@ -41,7 +42,8 @@ export default async function CourseDetailPage({ params }: { params: { slug: str
           full_name,
           avatar_url,
           bio
-        )
+        ),
+        category:course_categories(id, name, slug, icon)
       `)
       .eq('id', params.slug)
       .eq('status', 'published')
@@ -112,8 +114,24 @@ export default async function CourseDetailPage({ params }: { params: { slug: str
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 p-8">
       <div className="max-w-6xl mx-auto">
-        {/* Back Button */}
+        {/* Back Button & Breadcrumbs */}
         <div className="mb-6">
+          <div className="flex items-center gap-2 text-sm text-gray-600 mb-4">
+            <Link href="/" className="hover:text-indigo-600 transition-colors">Home</Link>
+            <span>/</span>
+            {course.category ? (
+              <>
+                <Link 
+                  href={`/courses?category=${course.category.id}`} 
+                  className="hover:text-indigo-600 transition-colors"
+                >
+                  {course.category.icon} {course.category.name}
+                </Link>
+                <span>/</span>
+              </>
+            ) : null}
+            <span className="text-gray-900 font-medium">{course.title}</span>
+          </div>
           <Link href="/courses">
             <Button variant="ghost" className="rounded-xl">
               ← Back to Courses
@@ -164,9 +182,13 @@ export default async function CourseDetailPage({ params }: { params: { slug: str
 
                 <div className="flex flex-wrap gap-3">
                   {course.category && (
-                    <span className="px-4 py-2 bg-purple-100 text-purple-700 rounded-full text-sm font-medium">
-                      📂 {course.category}
-                    </span>
+                    <Link 
+                      href={`/courses?category=${course.category.id}`}
+                      className="inline-flex items-center gap-1 px-4 py-2 bg-purple-100 text-purple-700 rounded-full text-sm font-medium hover:bg-purple-200 transition-colors"
+                    >
+                      <span>{course.category.icon || '📂'}</span>
+                      <span>{course.category.name}</span>
+                    </Link>
                   )}
                   {course.level && (
                     <span className="px-4 py-2 bg-blue-100 text-blue-700 rounded-full text-sm font-medium capitalize">

@@ -27,7 +27,8 @@ export default async function CourseCatalogPage({
     .from('courses')
     .select(`
       *,
-      instructor:user_profiles!courses_instructor_id_fkey(full_name, avatar_url)
+      instructor:user_profiles!courses_instructor_id_fkey(full_name, avatar_url),
+      category:course_categories(id, name, slug, icon)
     `)
     .eq('status', 'published')
 
@@ -38,7 +39,7 @@ export default async function CourseCatalogPage({
 
   // Category filter
   if (searchParams.category) {
-    query = query.eq('category', searchParams.category)
+    query = query.eq('category_id', searchParams.category)
   }
 
   // Price range
@@ -74,20 +75,11 @@ export default async function CourseCatalogPage({
 
   const { data: courses } = await query
 
-  // Get unique categories for filter (assuming category is a string field)
-  const { data: allCourses } = await supabase
-    .from('courses')
-    .select('category')
-    .eq('status', 'published')
-    .not('category', 'is', null)
-
-  const uniqueCategories = Array.from(
-    new Set(allCourses?.map(c => c.category).filter(Boolean) || [])
-  ).map((cat, idx) => ({
-    id: cat as string,
-    name: cat as string,
-    icon: '📂'
-  }))
+  // Get all categories for filter
+  const { data: categories } = await supabase
+    .from('course_categories')
+    .select('*')
+    .order('name')
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-white to-indigo-50 p-8">
@@ -104,7 +96,7 @@ export default async function CourseCatalogPage({
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
           {/* Filters Sidebar */}
           <div className="lg:col-span-1">
-            <SearchFilters categories={uniqueCategories} />
+            <SearchFilters categories={categories || []} />
           </div>
 
           {/* Courses Grid */}
@@ -156,8 +148,9 @@ export default async function CourseCatalogPage({
                         
                         <div className="flex flex-wrap gap-2 mb-4 text-xs">
                           {course.category && (
-                            <span className="px-2 py-1 rounded-full bg-purple-100 text-purple-700">
-                              📂 {course.category}
+                            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-700">
+                              <span>{course.category.icon || '📂'}</span>
+                              <span>{course.category.name}</span>
                             </span>
                           )}
                           {course.level && (

@@ -26,7 +26,8 @@ export default async function StudentDashboard() {
       *,
       course:courses(
         *,
-        instructor:user_profiles!courses_instructor_id_fkey(full_name, avatar_url)
+        instructor:user_profiles!courses_instructor_id_fkey(full_name, avatar_url),
+        category:course_categories(id, name, slug, icon)
       )
     `)
     .eq('student_id', session.user.id)
@@ -112,6 +113,16 @@ export default async function StudentDashboard() {
                         <p className="text-sm text-gray-600 mb-2">
                           By {instructor?.full_name || 'Instructor'}
                         </p>
+                        
+                        {/* Category */}
+                        {course?.category && (
+                          <div className="mb-2">
+                            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-700">
+                              <span>{course.category.icon || '📂'}</span>
+                              <span>{course.category.name}</span>
+                            </span>
+                          </div>
+                        )}
                         
                         {/* Rating */}
                         {course?.rating && course.rating > 0 && (

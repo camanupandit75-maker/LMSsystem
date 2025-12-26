@@ -21,7 +21,10 @@ export default async function WatchCoursePage({
   // Get course by slug or id
   let { data: course } = await supabase
     .from('courses')
-    .select('*')
+    .select(`
+      *,
+      category:course_categories(id, name, slug, icon)
+    `)
     .eq('slug', params.slug)
     .single()
 
@@ -29,7 +32,10 @@ export default async function WatchCoursePage({
   if (!course) {
     const { data: courseById } = await supabase
       .from('courses')
-      .select('*')
+      .select(`
+        *,
+        category:course_categories(id, name, slug, icon)
+      `)
       .eq('id', params.slug)
       .single()
     

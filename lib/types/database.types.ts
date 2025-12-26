@@ -45,13 +45,22 @@ export interface InstructorSubscription {
   updated_at: string;
 }
 
+export interface CourseCategory {
+  id: string;
+  name: string;
+  slug: string;
+  icon?: string;
+  created_at: string;
+}
+
 export interface Course {
   id: string;
   instructor_id: string;
   title: string;
   description?: string;
   thumbnail_url?: string;
-  category?: string;
+  category_id?: string;
+  category?: string; // Legacy field, kept for backward compatibility
   level?: 'beginner' | 'intermediate' | 'advanced';
   price: number;
   currency: string;

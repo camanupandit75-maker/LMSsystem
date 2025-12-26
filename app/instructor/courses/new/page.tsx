@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
@@ -11,11 +11,13 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
+import type { CourseCategory } from '@/lib/types/database.types'
 
 export default function NewCoursePage() {
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
-  const [category, setCategory] = useState('')
+  const [categoryId, setCategoryId] = useState('')
+  const [categories, setCategories] = useState<CourseCategory[]>([])
   const [level, setLevel] = useState<'beginner' | 'intermediate' | 'advanced'>('beginner')
   const [price, setPrice] = useState('0')
   const [thumbnailUrl, setThumbnailUrl] = useState('')
@@ -23,6 +25,23 @@ export default function NewCoursePage() {
   const [error, setError] = useState<string | null>(null)
   const router = useRouter()
   const supabase = createClient()
+
+  // Fetch categories on mount
+  useEffect(() => {
+    async function fetchCategories() {
+      const { data, error } = await supabase
+        .from('course_categories')
+        .select('*')
+        .order('name')
+      
+      if (error) {
+        console.error('Error fetching categories:', error)
+      } else if (data) {
+        setCategories(data)
+      }
+    }
+    fetchCategories()
+  }, [])
 
   const generateSlug = (title: string) => {
     return title
@@ -68,7 +87,7 @@ export default function NewCoursePage() {
           instructor_id: session.user.id,
           title,
           description: description || null,
-          category: category || null,
+          category_id: categoryId || null,
           level,
           price: parseFloat(price) || 0,
           thumbnail_url: thumbnailUrl || null,
@@ -147,15 +166,29 @@ export default function NewCoursePage() {
 
               {/* Category */}
               <div>
-                <Label htmlFor="category" className="text-base font-semibold">Category</Label>
-                <Input
-                  id="category"
-                  value={category}
-                  onChange={(e) => setCategory(e.target.value)}
-                  placeholder="e.g., Web Development, Design, Business"
+                <Label htmlFor="category" className="text-base font-semibold">Category *</Label>
+                <Select 
+                  value={categoryId} 
+                  onValueChange={setCategoryId} 
                   disabled={loading}
-                  className="mt-2 h-12 rounded-xl"
-                />
+                >
+                  <SelectTrigger className="mt-2 h-12 rounded-xl">
+                    <SelectValue placeholder="Select a category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categories.map((cat) => (
+                      <SelectItem key={cat.id} value={cat.id}>
+                        <span className="flex items-center gap-2">
+                          <span>{cat.icon || '📂'}</span>
+                          <span>{cat.name}</span>
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {categories.length === 0 && (
+                  <p className="text-xs text-gray-500 mt-1">Loading categories...</p>
+                )}
               </div>
 
               {/* Level */}

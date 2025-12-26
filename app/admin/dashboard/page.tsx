@@ -34,7 +34,8 @@ export default async function AdminDashboard() {
     .from('courses')
     .select(`
       *,
-      instructor:user_profiles!courses_instructor_id_fkey(full_name)
+      instructor:user_profiles!courses_instructor_id_fkey(full_name),
+      category:course_categories(id, name, slug, icon)
     `)
     .order('created_at', { ascending: false })
     .limit(10)
@@ -85,6 +86,32 @@ export default async function AdminDashboard() {
 
   const totalCourses = courses?.length || 0
   const publishedCourses = courses?.filter(c => c.status === 'published').length || 0
+
+  // Get category statistics
+  const { data: categoryStats } = await supabase
+    .from('courses')
+    .select('category_id, category:course_categories(name, icon)')
+    .eq('status', 'published')
+
+  // Count courses per category
+  const categoryCounts: Record<string, { name: string; icon?: string; count: number }> = {}
+  categoryStats?.forEach((item: any) => {
+    if (item.category_id && item.category) {
+      const key = item.category_id
+      if (!categoryCounts[key]) {
+        categoryCounts[key] = {
+          name: item.category.name,
+          icon: item.category.icon,
+          count: 0
+        }
+      }
+      categoryCounts[key].count++
+    }
+  })
+  
+  const sortedCategories = Object.values(categoryCounts)
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 5)
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 p-8">
@@ -243,6 +270,33 @@ export default async function AdminDashboard() {
           </CardContent>
         </Card>
 
+        {/* Category Statistics */}
+        {sortedCategories.length > 0 && (
+          <Card className="mb-8 border-0 shadow-xl rounded-2xl">
+            <CardHeader>
+              <CardTitle className="text-2xl font-bold">Popular Categories</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {sortedCategories.map((cat, idx) => (
+                  <div 
+                    key={idx} 
+                    className="border-2 rounded-xl p-4 hover:bg-gray-50 transition-all hover:border-purple-300"
+                  >
+                    <div className="flex items-center gap-3 mb-2">
+                      <span className="text-2xl">{cat.icon || '📂'}</span>
+                      <div>
+                        <h4 className="font-semibold">{cat.name}</h4>
+                        <p className="text-sm text-gray-600">{cat.count} course{cat.count !== 1 ? 's' : ''}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Recent Courses */}
         <Card className="mb-8 border-0 shadow-xl rounded-2xl">
           <CardHeader>
@@ -259,10 +313,16 @@ export default async function AdminDashboard() {
                         <p className="text-sm text-gray-600 mt-1">
                           By {course.instructor?.full_name || 'Unknown'}
                         </p>
-                        <div className="flex gap-4 mt-2 text-sm text-gray-500">
-                          <span>💰 ${course.price.toFixed(2)}</span>
-                          <span>👥 {course.enrollment_count} students</span>
-                          <span>📹 {course.actual_video_count} videos</span>
+                        <div className="flex flex-wrap gap-2 mt-2 text-sm">
+                          {course.category && (
+                            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-700">
+                              <span>{course.category.icon || '📂'}</span>
+                              <span>{course.category.name}</span>
+                            </span>
+                          )}
+                          <span className="text-gray-500">💰 ${course.price.toFixed(2)}</span>
+                          <span className="text-gray-500">👥 {course.enrollment_count} students</span>
+                          <span className="text-gray-500">📹 {course.actual_video_count} videos</span>
                         </div>
                       </div>
                       <span className={`px-3 py-1 rounded-full text-xs font-medium ${

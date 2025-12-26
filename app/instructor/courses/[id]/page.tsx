@@ -15,7 +15,10 @@ export default async function ManageCoursePage({ params }: { params: { id: strin
   // Get course
   const { data: course } = await supabase
     .from('courses')
-    .select('*')
+    .select(`
+      *,
+      category:course_categories(id, name, slug, icon)
+    `)
     .eq('id', params.id)
     .eq('instructor_id', session.user.id)
     .single()
@@ -72,6 +75,12 @@ export default async function ManageCoursePage({ params }: { params: { id: strin
               }`}>
                 Status: {course.status}
               </span>
+              {course.category && (
+                <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full font-semibold bg-purple-100 text-purple-700">
+                  <span>{course.category.icon || '📂'}</span>
+                  <span>{course.category.name}</span>
+                </span>
+              )}
               <span className="px-3 py-1 rounded-full bg-green-100 text-green-700 font-semibold">
                 💰 ${course.price}
               </span>

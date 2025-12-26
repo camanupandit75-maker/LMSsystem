@@ -9,8 +9,10 @@ import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
+import type { CourseCategory } from '@/lib/types/database.types'
 
 export default function EditVideoPage({ params }: { params: { id: string; videoId: string } }) {
   const [title, setTitle] = useState('')
@@ -20,6 +22,9 @@ export default function EditVideoPage({ params }: { params: { id: string; videoI
   const [sectionName, setSectionName] = useState('')
   const [durationMinutes, setDurationMinutes] = useState('')
   const [isPreview, setIsPreview] = useState(false)
+  const [courseCategory, setCourseCategory] = useState<{ name: string; icon?: string; id: string } | null>(null)
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string>('')
+  const [categories, setCategories] = useState<CourseCategory[]>([])
   const [loading, setLoading] = useState(false)
   const [fetching, setFetching] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -28,6 +33,8 @@ export default function EditVideoPage({ params }: { params: { id: string; videoI
 
   useEffect(() => {
     fetchVideo()
+    fetchCourseCategory()
+    fetchAllCategories()
   }, [])
 
   async function fetchVideo() {
@@ -52,6 +59,53 @@ export default function EditVideoPage({ params }: { params: { id: string; videoI
       setError(err.message || 'Failed to load video')
     } finally {
       setFetching(false)
+    }
+  }
+
+  async function fetchAllCategories() {
+    try {
+      const { data: allCategories, error } = await supabase
+        .from('course_categories')
+        .select('*')
+        .order('name')
+
+      if (!error && allCategories) {
+        setCategories(allCategories)
+      }
+    } catch (err) {
+      console.error('Error fetching categories:', err)
+    }
+  }
+
+  async function fetchCourseCategory() {
+    try {
+      // First get the course to find category_id
+      const { data: course, error: courseError } = await supabase
+        .from('courses')
+        .select('category_id')
+        .eq('id', params.id)
+        .single()
+
+      if (!courseError && course?.category_id) {
+        setSelectedCategoryId(course.category_id)
+        
+        // Find the category details
+        const { data: category, error: categoryError } = await supabase
+          .from('course_categories')
+          .select('id, name, icon')
+          .eq('id', course.category_id)
+          .single()
+
+        if (!categoryError && category) {
+          setCourseCategory({
+            id: category.id,
+            name: category.name,
+            icon: category.icon
+          })
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching category:', err)
     }
   }
 
@@ -107,6 +161,19 @@ export default function EditVideoPage({ params }: { params: { id: string; videoI
 
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) throw new Error('Not authenticated')
+
+      // Update course category if changed
+      if (selectedCategoryId) {
+        const { error: categoryUpdateError } = await supabase
+          .from('courses')
+          .update({ category_id: selectedCategoryId })
+          .eq('id', params.id)
+
+        if (categoryUpdateError) {
+          console.error('Error updating category:', categoryUpdateError)
+          // Don't throw - category update is not critical
+        }
+      }
 
       // Prepare video data based on source
       const videoData: any = {
@@ -182,15 +249,46 @@ export default function EditVideoPage({ params }: { params: { id: string; videoI
 
         <Card className="bg-white rounded-2xl shadow-xl border border-gray-100">
           <CardHeader>
-            <CardTitle className="text-3xl font-bold text-gradient">
-              Edit Video 📹
-            </CardTitle>
-            <p className="text-gray-600 mt-2">
-              Update your video information
-            </p>
+            <div className="flex items-start justify-between mb-4">
+              <div className="flex-1">
+                <CardTitle className="text-3xl font-bold text-gradient">
+                  Edit Video 📹
+                </CardTitle>
+                <p className="text-gray-600 mt-2">
+                  Update your video information
+                </p>
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
+              {/* Course Category Selection */}
+              <div>
+                <Label htmlFor="category" className="text-base font-semibold">Course Category *</Label>
+                <Select 
+                  value={selectedCategoryId} 
+                  onValueChange={setSelectedCategoryId}
+                  disabled={loading || fetching}
+                >
+                  <SelectTrigger className="mt-2 h-12 rounded-xl">
+                    <SelectValue placeholder="Select a category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categories.map((cat) => (
+                      <SelectItem key={cat.id} value={cat.id}>
+                        <span className="flex items-center gap-2">
+                          <span>{cat.icon || '📂'}</span>
+                          <span>{cat.name}</span>
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-gray-500 mt-1.5">
+                  This category will be applied to your course and helps students find your content
+                </p>
+              </div>
+
               {/* Video Title */}
               <div>
                 <Label htmlFor="title" className="text-base font-semibold">Video Title *</Label>
