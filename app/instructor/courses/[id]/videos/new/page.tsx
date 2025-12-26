@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
 import type { CourseCategory } from '@/lib/types/database.types'
+import InstructorAgreementModal from '@/components/legal/InstructorAgreementModal'
 
 export default function AddVideoPage({ params }: { params: { id: string } }) {
   const [title, setTitle] = useState('')
@@ -27,13 +28,34 @@ export default function AddVideoPage({ params }: { params: { id: string } }) {
   const [categories, setCategories] = useState<CourseCategory[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [showAgreementModal, setShowAgreementModal] = useState(false)
+  const [agreementAccepted, setAgreementAccepted] = useState(false)
+  const [checkingAgreement, setCheckingAgreement] = useState(true)
   const router = useRouter()
   const supabase = createClient()
 
-  // Fetch categories and current course category on mount
+  // Check agreement status and fetch categories on mount
   useEffect(() => {
     async function fetchData() {
       try {
+        // Check agreement status
+        const { data: { session } } = await supabase.auth.getSession()
+        if (session) {
+          const { data: profile } = await supabase
+            .from('user_profiles')
+            .select('instructor_agreement_accepted')
+            .eq('id', session.user.id)
+            .single()
+
+          if (profile?.instructor_agreement_accepted) {
+            setAgreementAccepted(true)
+          } else {
+            // Show modal if agreement not accepted
+            setShowAgreementModal(true)
+          }
+        }
+        setCheckingAgreement(false)
+
         // Fetch all categories
         const { data: allCategories, error: categoriesError } = await supabase
           .from('course_categories')
@@ -66,6 +88,7 @@ export default function AddVideoPage({ params }: { params: { id: string } }) {
         }
       } catch (err) {
         console.error('Error fetching data:', err)
+        setCheckingAgreement(false)
       }
     }
     fetchData()
@@ -108,6 +131,13 @@ export default function AddVideoPage({ params }: { params: { id: string } }) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    
+    // Check agreement before submitting
+    if (!agreementAccepted) {
+      setShowAgreementModal(true)
+      return
+    }
+
     setLoading(true)
     setError(null)
 
@@ -207,8 +237,34 @@ export default function AddVideoPage({ params }: { params: { id: string } }) {
     }
   }
 
+  const handleAgreementAccepted = () => {
+    setAgreementAccepted(true)
+    setShowAgreementModal(false)
+  }
+
+  const handleAgreementCancel = () => {
+    router.back()
+  }
+
+  if (checkingAgreement) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-white to-indigo-50 p-8 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-white to-indigo-50 p-8">
+      {showAgreementModal && (
+        <InstructorAgreementModal
+          onAccept={handleAgreementAccepted}
+          onCancel={handleAgreementCancel}
+        />
+      )}
       <div className="max-w-3xl mx-auto">
         <div className="mb-6">
           <Link href={`/instructor/courses/${params.id}`}>
