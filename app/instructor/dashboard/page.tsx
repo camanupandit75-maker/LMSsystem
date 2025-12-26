@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 import { DashboardSwitcher } from '@/components/DashboardSwitcher'
+import { BookOpen, Users, DollarSign, TrendingUp, Star } from 'lucide-react'
 
 export default async function InstructorDashboard() {
   const supabase = await createClient()
@@ -139,6 +140,18 @@ export default async function InstructorDashboard() {
                       <div className="flex-1">
                         <h3 className="font-semibold text-lg">{course.title}</h3>
                         <p className="text-gray-600 text-sm mt-1 line-clamp-2">{course.description}</p>
+                        {/* Rating */}
+                        {course.rating && course.rating > 0 && (
+                          <div className="flex items-center gap-1 mt-2">
+                            <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
+                            <span className="text-xs font-semibold text-gray-900">{course.rating.toFixed(1)}</span>
+                            {course.review_count > 0 && (
+                              <span className="text-xs text-gray-500">
+                                ({course.review_count})
+                              </span>
+                            )}
+                          </div>
+                        )}
                         <div className="flex gap-4 mt-3 text-sm text-gray-500">
                           <span>📹 {course.total_videos} videos</span>
                           <span>⏱️ {course.total_duration_minutes} mins</span>

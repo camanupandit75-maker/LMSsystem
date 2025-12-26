@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 import { DashboardSwitcher } from '@/components/DashboardSwitcher'
+import { BookOpen, CheckCircle, TrendingUp, Star } from 'lucide-react'
 
 export default async function StudentDashboard() {
   const supabase = await createClient()
@@ -108,9 +109,22 @@ export default async function StudentDashboard() {
                       )}
                       <div className="p-4">
                         <h3 className="font-semibold text-lg mb-2 line-clamp-1">{course?.title}</h3>
-                        <p className="text-sm text-gray-600 mb-3">
+                        <p className="text-sm text-gray-600 mb-2">
                           By {instructor?.full_name || 'Instructor'}
                         </p>
+                        
+                        {/* Rating */}
+                        {course?.rating && course.rating > 0 && (
+                          <div className="flex items-center gap-1 mb-3">
+                            <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
+                            <span className="text-xs font-semibold text-gray-900">{course.rating.toFixed(1)}</span>
+                            {course.review_count > 0 && (
+                              <span className="text-xs text-gray-500">
+                                ({course.review_count})
+                              </span>
+                            )}
+                          </div>
+                        )}
                         
                         {/* Progress Bar */}
                         <div className="mb-3">

@@ -5,6 +5,9 @@ import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 import { EnrollButton } from '@/components/EnrollButton'
 import Image from 'next/image'
+import { Star } from 'lucide-react'
+import { ReviewForm } from '@/components/reviews/ReviewForm'
+import { ReviewsList } from '@/components/reviews/ReviewsList'
 
 export default async function CourseDetailPage({ params }: { params: { slug: string } }) {
   const supabase = await createClient()
@@ -87,6 +90,25 @@ export default async function CourseDetailPage({ params }: { params: { slug: str
   const previewVideos = videos?.filter(v => v.is_preview) || []
   const totalVideos = videos?.length || 0
 
+  // Get user's existing review if enrolled
+  let existingReview = null
+  if (session && isEnrolled) {
+    const { data: review } = await supabase
+      .from('course_reviews')
+      .select('*')
+      .eq('student_id', session.user.id)
+      .eq('course_id', course.id)
+      .single()
+    
+    if (review) {
+      existingReview = {
+        id: review.id,
+        rating: review.rating,
+        review_text: review.review_text || undefined
+      }
+    }
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 p-8">
       <div className="max-w-6xl mx-auto">
@@ -124,6 +146,19 @@ export default async function CourseDetailPage({ params }: { params: { slug: str
                 <h1 className="text-4xl font-bold mb-4 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
                   {course.title}
                 </h1>
+                
+                {/* Rating Display */}
+                {course.rating && course.rating > 0 && (
+                  <div className="flex items-center gap-2 mb-4">
+                    <Star className="w-5 h-5 fill-yellow-400 text-yellow-400" />
+                    <span className="font-bold text-xl text-gray-900">{course.rating.toFixed(1)}</span>
+                    {course.review_count > 0 && (
+                      <span className="text-gray-600">
+                        ({course.review_count} {course.review_count === 1 ? 'review' : 'reviews'})
+                      </span>
+                    )}
+                  </div>
+                )}
                 
                 <p className="text-gray-700 text-lg mb-6">{course.description}</p>
 
@@ -243,6 +278,35 @@ export default async function CourseDetailPage({ params }: { params: { slug: str
                     <p>No videos yet</p>
                   </div>
                 )}
+              </CardContent>
+            </Card>
+
+            {/* Reviews Section */}
+            <Card className="border-0 shadow-xl rounded-2xl">
+              <CardHeader>
+                <CardTitle className="text-2xl font-bold">Reviews & Ratings</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-8">
+                {/* Review Form (if enrolled) */}
+                {isEnrolled && (
+                  <div>
+                    <h3 className="text-lg font-semibold mb-4">
+                      {existingReview ? 'Edit Your Review' : 'Write a Review'}
+                    </h3>
+                    <ReviewForm 
+                      courseId={course.id} 
+                      existingReview={existingReview}
+                    />
+                  </div>
+                )}
+
+                {/* Reviews List */}
+                <div>
+                  <h3 className="text-lg font-semibold mb-4">
+                    All Reviews ({course.review_count || 0})
+                  </h3>
+                  <ReviewsList courseId={course.id} />
+                </div>
               </CardContent>
             </Card>
           </div>

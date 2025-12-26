@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 import { ArrowLeft, Plus, Edit, Play, Globe, EyeOff } from 'lucide-react'
 import { PublishButton } from './publish-button'
+import { DeleteVideoButton } from '@/components/videos/DeleteVideoButton'
 
 export default async function ManageCoursePage({ params }: { params: { id: string } }) {
   const supabase = await createClient()
@@ -151,6 +152,11 @@ export default async function ManageCoursePage({ params }: { params: { id: strin
                             Edit
                           </Button>
                         </Link>
+                        <DeleteVideoButton
+                          videoId={video.id}
+                          videoTitle={video.title}
+                          courseId={params.id}
+                        />
                       </div>
                     </div>
                   </div>

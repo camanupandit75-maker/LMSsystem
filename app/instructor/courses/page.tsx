@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
-import { Plus, ArrowLeft, Edit, Eye } from 'lucide-react'
+import { Plus, ArrowLeft, Edit, Eye, Star } from 'lucide-react'
 import { DashboardSwitcher } from '@/components/DashboardSwitcher'
 
 export default async function InstructorCoursesPage() {
@@ -130,6 +130,18 @@ export default async function InstructorCoursesPage() {
                             {course.status}
                           </span>
                         </div>
+                        {/* Rating */}
+                        {course.rating && course.rating > 0 && (
+                          <div className="flex items-center gap-2 mb-2">
+                            <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                            <span className="font-semibold text-sm text-gray-900">{course.rating.toFixed(1)}</span>
+                            {course.review_count > 0 && (
+                              <span className="text-xs text-gray-500">
+                                ({course.review_count} {course.review_count === 1 ? 'review' : 'reviews'})
+                              </span>
+                            )}
+                          </div>
+                        )}
                         {course.description && (
                           <p className="text-sm text-gray-600 mb-3 line-clamp-2">{course.description}</p>
                         )}
