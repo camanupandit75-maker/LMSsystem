@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
+import { grantBonusCourses } from '@/app/admin/instructors/[id]/actions'
 
 interface GrantCoursesFormProps {
   instructorId: string
@@ -51,62 +52,17 @@ export function GrantCoursesForm({ instructorId, currentBonus }: GrantCoursesFor
         throw new Error('Please provide a reason for granting bonus courses')
       }
 
-      console.log('📝 Updating subscription directly with:', {
-        instructor_id: instructorId,
-        bonus_courses: bonusAmount,
-        bonus_granted_by: session.user.id,
-        bonus_reason: reason
+      // Use server action for admin update (bypasses RLS issues)
+      console.log('🚀 Calling server action to grant bonus courses')
+      console.log('Parameters:', {
+        instructorId,
+        bonusAmount,
+        reason
       })
 
-      // Update subscription directly - no existence check needed
-      const { data: updatedData, error: updateError } = await supabase
-        .from('instructor_subscriptions')
-        .update({
-          bonus_courses: bonusAmount,
-          bonus_granted_by: session.user.id,
-          bonus_granted_at: new Date().toISOString(),
-          bonus_reason: reason
-        })
-        .eq('instructor_id', instructorId)
-        .eq('is_active', true)
-        .select()
+      const result = await grantBonusCourses(instructorId, bonusAmount, reason)
 
-      if (updateError) {
-        console.error('❌ Update error:', updateError)
-        throw updateError
-      }
-
-      if (!updatedData || updatedData.length === 0) {
-        console.warn('⚠️ No rows updated. This might mean:')
-        console.warn('  - No subscription with instructor_id:', instructorId)
-        console.warn('  - No subscription with is_active = true')
-        console.warn('  - Trying update without is_active filter...')
-        
-        // Try update without is_active filter as fallback
-        const { data: fallbackData, error: fallbackError } = await supabase
-          .from('instructor_subscriptions')
-          .update({
-            bonus_courses: bonusAmount,
-            bonus_granted_by: session.user.id,
-            bonus_granted_at: new Date().toISOString(),
-            bonus_reason: reason
-          })
-          .eq('instructor_id', instructorId)
-          .select()
-
-        if (fallbackError) {
-          console.error('❌ Fallback update error:', fallbackError)
-          throw new Error(`Failed to update subscription: ${fallbackError.message}`)
-        }
-
-        if (!fallbackData || fallbackData.length === 0) {
-          throw new Error('No subscription found for this instructor. Please ensure the instructor has a subscription.')
-        }
-
-        console.log('✅ Fallback update successful:', fallbackData)
-      } else {
-        console.log('✅ Update successful:', updatedData)
-      }
+      console.log('✅ Bonus granted successfully via server action:', result.data)
 
       // Log admin action (if admin_actions table exists)
       try {
