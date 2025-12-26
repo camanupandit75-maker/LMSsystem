@@ -37,6 +37,11 @@ export default async function InstructorDashboard() {
     .eq('instructor_id', session.user.id)
     .order('created_at', { ascending: false })
 
+  // Calculate total allowed courses (base + bonus)
+  const totalAllowed = (subscription?.max_courses || 0) + (subscription?.bonus_courses || 0)
+  const usedCourses = subscription?.used_courses || 0
+  const remainingCourses = totalAllowed - usedCourses
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-cyan-50 p-8">
       <div className="max-w-7xl mx-auto">
@@ -58,8 +63,13 @@ export default async function InstructorDashboard() {
             <CardContent>
               <div className="text-3xl font-bold">{courses?.length || 0}</div>
               <p className="text-xs text-gray-500 mt-1">
-                {subscription?.used_courses || 0} / {subscription?.max_courses || 1} used
+                {usedCourses} / {totalAllowed} used
               </p>
+              {subscription?.bonus_courses > 0 && (
+                <p className="text-xs text-green-600 mt-0.5">
+                  +{subscription.bonus_courses} bonus
+                </p>
+              )}
             </CardContent>
           </Card>
 
@@ -109,8 +119,18 @@ export default async function InstructorDashboard() {
               <div>
                 <div className="text-2xl font-bold capitalize">{subscription?.tier || 'Free'} Plan</div>
                 <p className="text-gray-600 mt-1">
-                  {subscription?.max_courses || 1} course{subscription?.max_courses !== 1 ? 's' : ''} allowed
+                  {totalAllowed} course{totalAllowed !== 1 ? 's' : ''} allowed
+                  {subscription?.bonus_courses > 0 && (
+                    <span className="text-green-600 font-semibold">
+                      {' '}({subscription.max_courses} base + {subscription.bonus_courses} bonus)
+                    </span>
+                  )}
                 </p>
+                {remainingCourses > 0 && (
+                  <p className="text-sm text-gray-500 mt-1">
+                    {remainingCourses} course{remainingCourses !== 1 ? 's' : ''} remaining
+                  </p>
+                )}
               </div>
               <Link href="/instructor/subscription">
                 <Button className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700">

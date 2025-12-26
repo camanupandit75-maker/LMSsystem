@@ -69,14 +69,20 @@ export default function NewCoursePage() {
 
       if (!subscription) throw new Error('No active subscription found')
       
+      // Calculate total allowed (base + bonus)
+      const totalAllowed = (subscription.max_courses || 0) + (subscription.bonus_courses || 0)
+      
       // Get current course count
       const { count } = await supabase
         .from('courses')
         .select('*', { count: 'exact', head: true })
         .eq('instructor_id', session.user.id)
 
-      if ((count || 0) >= subscription.max_courses) {
-        throw new Error(`You've reached your course limit (${subscription.max_courses} courses). Please upgrade your plan.`)
+      if ((count || 0) >= totalAllowed) {
+        const bonusText = subscription.bonus_courses > 0 
+          ? ` (${subscription.max_courses} base + ${subscription.bonus_courses} bonus)`
+          : ''
+        throw new Error(`You've reached your course limit (${totalAllowed} courses${bonusText}). Please upgrade your plan or request bonus courses.`)
       }
 
       // Create course

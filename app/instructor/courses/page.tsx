@@ -77,8 +77,13 @@ export default async function InstructorCoursesPage() {
               {courses?.length || 0}
             </p>
             <p className="text-xs text-gray-500 mt-1">
-              {courses?.length || 0} / {totalCoursesAllowed} allowed
+              {subscription?.used_courses ?? courses?.length ?? 0} / {totalCoursesAllowed} allowed
             </p>
+            {subscription?.bonus_courses > 0 && (
+              <p className="text-xs text-green-600 mt-0.5 font-medium">
+                +{subscription.bonus_courses} bonus course{subscription.bonus_courses !== 1 ? 's' : ''}
+              </p>
+            )}
           </Card>
 
           <Card className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">

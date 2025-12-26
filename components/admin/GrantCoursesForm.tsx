@@ -28,9 +28,19 @@ export function GrantCoursesForm({ instructorId, currentBonus }: GrantCoursesFor
     setError(null)
     setSuccess(false)
 
+    console.log('🚀 Grant bonus form submitted')
+    console.log('Instructor ID:', instructorId)
+    console.log('Current bonus:', currentBonus)
+    console.log('New bonus amount:', bonusCourses)
+
     try {
       const { data: { session } } = await supabase.auth.getSession()
-      if (!session) throw new Error('Not authenticated')
+      if (!session) {
+        console.error('❌ No session found')
+        throw new Error('Not authenticated')
+      }
+
+      console.log('✅ Session found:', session.user.id)
 
       const bonusAmount = parseInt(bonusCourses)
       if (isNaN(bonusAmount) || bonusAmount < 0) {
@@ -41,8 +51,15 @@ export function GrantCoursesForm({ instructorId, currentBonus }: GrantCoursesFor
         throw new Error('Please provide a reason for granting bonus courses')
       }
 
-      // Update subscription with bonus courses
-      const { error: updateError } = await supabase
+      console.log('📝 Updating subscription directly with:', {
+        instructor_id: instructorId,
+        bonus_courses: bonusAmount,
+        bonus_granted_by: session.user.id,
+        bonus_reason: reason
+      })
+
+      // Update subscription directly - no existence check needed
+      const { data: updatedData, error: updateError } = await supabase
         .from('instructor_subscriptions')
         .update({
           bonus_courses: bonusAmount,
@@ -52,12 +69,48 @@ export function GrantCoursesForm({ instructorId, currentBonus }: GrantCoursesFor
         })
         .eq('instructor_id', instructorId)
         .eq('is_active', true)
+        .select()
 
-      if (updateError) throw updateError
+      if (updateError) {
+        console.error('❌ Update error:', updateError)
+        throw updateError
+      }
+
+      if (!updatedData || updatedData.length === 0) {
+        console.warn('⚠️ No rows updated. This might mean:')
+        console.warn('  - No subscription with instructor_id:', instructorId)
+        console.warn('  - No subscription with is_active = true')
+        console.warn('  - Trying update without is_active filter...')
+        
+        // Try update without is_active filter as fallback
+        const { data: fallbackData, error: fallbackError } = await supabase
+          .from('instructor_subscriptions')
+          .update({
+            bonus_courses: bonusAmount,
+            bonus_granted_by: session.user.id,
+            bonus_granted_at: new Date().toISOString(),
+            bonus_reason: reason
+          })
+          .eq('instructor_id', instructorId)
+          .select()
+
+        if (fallbackError) {
+          console.error('❌ Fallback update error:', fallbackError)
+          throw new Error(`Failed to update subscription: ${fallbackError.message}`)
+        }
+
+        if (!fallbackData || fallbackData.length === 0) {
+          throw new Error('No subscription found for this instructor. Please ensure the instructor has a subscription.')
+        }
+
+        console.log('✅ Fallback update successful:', fallbackData)
+      } else {
+        console.log('✅ Update successful:', updatedData)
+      }
 
       // Log admin action (if admin_actions table exists)
       try {
-        await supabase.from('admin_actions').insert({
+        const { error: logError } = await supabase.from('admin_actions').insert({
           admin_id: session.user.id,
           action_type: 'grant_bonus_courses',
           target_type: 'instructor',
@@ -68,18 +121,28 @@ export function GrantCoursesForm({ instructorId, currentBonus }: GrantCoursesFor
             reason: reason
           }
         })
+        if (logError) {
+          console.log('⚠️ Could not log admin action (table might not exist):', logError)
+        } else {
+          console.log('✅ Admin action logged')
+        }
       } catch (logError) {
         // Admin actions table might not exist, continue anyway
-        console.log('Could not log admin action:', logError)
+        console.log('⚠️ Could not log admin action:', logError)
       }
 
       setSuccess(true)
+      setBonusCourses(bonusAmount.toString())
+      
+      // Refresh the page after a short delay to show success message
       setTimeout(() => {
+        console.log('🔄 Refreshing page...')
         router.refresh()
-      }, 1500)
+      }, 2000)
 
     } catch (err: any) {
-      setError(err.message)
+      console.error('❌ Error in handleSubmit:', err)
+      setError(err.message || 'Failed to grant bonus courses. Please try again.')
     } finally {
       setLoading(false)
     }

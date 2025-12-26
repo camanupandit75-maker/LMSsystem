@@ -5,6 +5,10 @@ import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 import { GrantCoursesForm } from '@/components/admin/GrantCoursesForm'
 
+// Disable caching to ensure fresh data
+export const revalidate = 0
+export const dynamic = 'force-dynamic'
+
 export default async function ManageInstructorPage({ params }: { params: { id: string } }) {
   const supabase = await createClient()
   
@@ -30,13 +34,43 @@ export default async function ManageInstructorPage({ params }: { params: { id: s
 
   if (!instructor) redirect('/admin/dashboard')
 
-  // Get subscription
-  const { data: subscription } = await supabase
+  // Debug: Log instructor ID
+  console.log('🔍 Fetching subscription for instructor ID:', params.id)
+
+  // Get subscription - use maybeSingle() to avoid errors if not found
+  let { data: subscription, error: subscriptionError } = await supabase
     .from('instructor_subscriptions')
     .select('*')
     .eq('instructor_id', params.id)
     .eq('is_active', true)
-    .single()
+    .maybeSingle()
+
+  // Debug: Log subscription data
+  console.log('📊 Subscription data (active):', subscription)
+  console.log('❌ Subscription error:', subscriptionError)
+  
+  // If no active subscription found, try to get any subscription (fallback)
+  if (!subscription && !subscriptionError) {
+    console.log('⚠️ No active subscription found, trying to get any subscription...')
+    const { data: anySubscription, error: anyError } = await supabase
+      .from('instructor_subscriptions')
+      .select('*')
+      .eq('instructor_id', params.id)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    
+    if (anySubscription) {
+      console.log('📊 Found subscription (not active):', anySubscription)
+      subscription = anySubscription
+    } else {
+      console.log('❌ No subscription found at all:', anyError)
+    }
+  }
+  
+  if (subscriptionError) {
+    console.error('❌ Error fetching subscription:', subscriptionError)
+  }
 
   // Get courses
   const { data: courses } = await supabase
@@ -46,6 +80,15 @@ export default async function ManageInstructorPage({ params }: { params: { id: s
     .order('created_at', { ascending: false })
 
   const totalCoursesAllowed = (subscription?.max_courses || 0) + (subscription?.bonus_courses || 0)
+  
+  // Debug: Log calculated totals
+  console.log('📈 Subscription details:', {
+    tier: subscription?.tier,
+    max_courses: subscription?.max_courses,
+    bonus_courses: subscription?.bonus_courses,
+    used_courses: subscription?.used_courses,
+    total_allowed: totalCoursesAllowed
+  })
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 p-8">
@@ -93,24 +136,43 @@ export default async function ManageInstructorPage({ params }: { params: { id: s
             <CardTitle className="text-2xl font-bold">📊 Subscription & Course Allocation</CardTitle>
           </CardHeader>
           <CardContent>
+            {!subscription ? (
+              <div className="bg-yellow-50 border-2 border-yellow-300 rounded-lg p-4 mb-6">
+                <p className="text-yellow-800 font-semibold">⚠️ No subscription found for this instructor</p>
+                <p className="text-sm text-yellow-700 mt-1">Instructor ID: {params.id}</p>
+              </div>
+            ) : null}
+            
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
               <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
                 <div className="text-sm text-purple-600 mb-1 font-medium">Plan Tier</div>
                 <div className="text-2xl font-bold capitalize">{subscription?.tier || 'None'}</div>
+                {subscription && (
+                  <div className="text-xs text-purple-500 mt-1">ID: {subscription.id?.substring(0, 8)}...</div>
+                )}
               </div>
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                 <div className="text-sm text-blue-600 mb-1 font-medium">Base Courses</div>
-                <div className="text-2xl font-bold">{subscription?.max_courses || 0}</div>
+                <div className="text-2xl font-bold">{subscription?.max_courses ?? 0}</div>
+                {subscription && (
+                  <div className="text-xs text-blue-500 mt-1">Active: {subscription.is_active ? 'Yes' : 'No'}</div>
+                )}
               </div>
               <div className="bg-green-50 border border-green-200 rounded-lg p-4">
                 <div className="text-sm text-green-600 mb-1 font-medium">Bonus Courses</div>
-                <div className="text-2xl font-bold">{subscription?.bonus_courses || 0}</div>
+                <div className="text-2xl font-bold">{subscription?.bonus_courses ?? 0}</div>
+                {subscription && subscription.bonus_courses > 0 && (
+                  <div className="text-xs text-green-500 mt-1">Granted: {subscription.bonus_granted_at ? new Date(subscription.bonus_granted_at).toLocaleDateString() : 'N/A'}</div>
+                )}
               </div>
               <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
                 <div className="text-sm text-orange-600 mb-1 font-medium">Used / Total</div>
                 <div className="text-2xl font-bold">
-                  {subscription?.used_courses || 0} / {totalCoursesAllowed}
+                  {subscription?.used_courses ?? 0} / {totalCoursesAllowed}
                 </div>
+                {subscription && (
+                  <div className="text-xs text-orange-500 mt-1">Remaining: {totalCoursesAllowed - (subscription.used_courses || 0)}</div>
+                )}
               </div>
             </div>
 

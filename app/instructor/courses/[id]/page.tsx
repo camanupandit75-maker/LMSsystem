@@ -90,11 +90,6 @@ export default async function ManageCoursePage({ params }: { params: { id: strin
               <span className="px-3 py-1 rounded-full bg-orange-100 text-orange-700 font-semibold">
                 👥 {course.enrollment_count} students
               </span>
-              {course.category && (
-                <span className="px-3 py-1 rounded-full bg-purple-100 text-purple-700 font-semibold">
-                  📂 {course.category}
-                </span>
-              )}
               {course.level && (
                 <span className="px-3 py-1 rounded-full bg-indigo-100 text-indigo-700 font-semibold capitalize">
                   🎯 {course.level}
