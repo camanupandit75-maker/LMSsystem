@@ -1,156 +1,121 @@
-"use client"
+'use client'
 
-import { useEffect, useRef, useState } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Play, Pause, Volume2, VolumeX, Maximize2 } from "lucide-react"
-import { motion } from "framer-motion"
+import { useState } from 'react'
 
 interface VideoPlayerProps {
   videoUrl: string
-  title: string
-  description?: string
+  videoSource: 'google_drive' | 'youtube'
+  title?: string
+  onComplete?: () => void
 }
 
-export function VideoPlayer({ videoUrl, title, description }: VideoPlayerProps) {
-  const videoRef = useRef<HTMLVideoElement>(null)
-  const [isPlaying, setIsPlaying] = useState(false)
-  const [isMuted, setIsMuted] = useState(false)
-  const [progress, setProgress] = useState(0)
-  const [showControls, setShowControls] = useState(true)
+export function VideoPlayer({ videoUrl, videoSource, title, onComplete }: VideoPlayerProps) {
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    const video = videoRef.current
-    if (!video) return
-
-    const updateProgress = () => {
-      const percent = (video.currentTime / video.duration) * 100
-      setProgress(percent)
-    }
-
-    video.addEventListener("timeupdate", updateProgress)
-    video.addEventListener("play", () => setIsPlaying(true))
-    video.addEventListener("pause", () => setIsPlaying(false))
+  // Extract Google Drive file ID
+  const extractGoogleDriveId = (url: string): string | null => {
+    const patterns = [
+      /\/file\/d\/([^\/]+)/,
+      /id=([^&]+)/,
+      /^([a-zA-Z0-9_-]{25,})$/
+    ]
     
-    return () => {
-      video.removeEventListener("timeupdate", updateProgress)
-      video.removeEventListener("play", () => setIsPlaying(true))
-      video.removeEventListener("pause", () => setIsPlaying(false))
+    for (const pattern of patterns) {
+      const match = url.match(pattern)
+      if (match) return match[1]
     }
-  }, [])
-
-  function togglePlay() {
-    const video = videoRef.current
-    if (!video) return
-
-    if (isPlaying) {
-      video.pause()
-    } else {
-      video.play()
-    }
-    setIsPlaying(!isPlaying)
+    
+    return null
   }
 
-  function toggleMute() {
-    const video = videoRef.current
-    if (!video) return
-
-    video.muted = !isMuted
-    setIsMuted(!isMuted)
+  // Extract YouTube video ID
+  const extractYouTubeId = (url: string): string | null => {
+    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/
+    const match = url.match(regExp)
+    return (match && match[2].length === 11) ? match[2] : null
   }
 
-  function toggleFullscreen() {
-    const video = videoRef.current
-    if (!video) return
+  const renderPlayer = () => {
+    if (videoSource === 'youtube') {
+      const videoId = extractYouTubeId(videoUrl)
+      if (!videoId) {
+        return (
+          <div className="flex items-center justify-center h-full bg-gray-900 text-white p-4">
+            <div className="text-center">
+              <p className="font-bold mb-2">Invalid YouTube URL</p>
+              <p className="text-sm">Could not extract video ID from URL</p>
+            </div>
+          </div>
+        )
+      }
 
-    if (video.requestFullscreen) {
-      video.requestFullscreen()
+      return (
+        <iframe
+          src={`https://www.youtube.com/embed/${videoId}?rel=0`}
+          title={title || 'YouTube Video'}
+          className="w-full h-full"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allowFullScreen
+          onLoad={() => setIsLoading(false)}
+          onError={() => {
+            setIsLoading(false)
+            setError('Failed to load YouTube video')
+          }}
+        />
+      )
     }
+
+    // Google Drive
+    const fileId = extractGoogleDriveId(videoUrl)
+    if (!fileId) {
+      return (
+        <div className="flex items-center justify-center h-full bg-gray-900 text-white p-4">
+          <div className="text-center">
+            <p className="font-bold mb-2">Invalid Google Drive URL</p>
+            <p className="text-sm">Could not extract file ID from URL</p>
+          </div>
+        </div>
+      )
+    }
+
+    return (
+      <iframe
+        src={`https://drive.google.com/file/d/${fileId}/preview`}
+        title={title || 'Google Drive Video'}
+        className="w-full h-full"
+        allow="autoplay"
+        allowFullScreen
+        onLoad={() => setIsLoading(false)}
+        onError={() => {
+          setIsLoading(false)
+          setError('Failed to load video from Google Drive')
+        }}
+      />
+    )
   }
 
   return (
-    <Card className="border-0 bg-gradient-to-br from-slate-800 to-slate-900 shadow-2xl rounded-3xl overflow-hidden">
-      <CardHeader className="glass border-b border-white/10 p-6">
-        <CardTitle className="text-3xl font-bold mb-2 bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
-          {title}
-        </CardTitle>
-        {description && (
-          <CardDescription className="text-base text-muted-foreground">
-            {description}
-          </CardDescription>
-        )}
-      </CardHeader>
-      <CardContent className="p-0">
-        <div
-          className="relative aspect-video w-full overflow-hidden bg-black group"
-          onMouseEnter={() => setShowControls(true)}
-          onMouseLeave={() => setShowControls(false)}
-        >
-          <video
-            ref={videoRef}
-            src={videoUrl}
-            className="h-full w-full object-contain"
-            controls={false}
-            onPlay={() => setIsPlaying(true)}
-            onPause={() => setIsPlaying(false)}
-          />
-          
-          {/* Custom Controls Overlay */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: showControls ? 1 : 0 }}
-            transition={{ duration: 0.2 }}
-            className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent pointer-events-none"
-          >
-            {/* Progress Bar */}
-            <div className="absolute bottom-0 left-0 right-0 h-1 bg-white/20">
-              <motion.div
-                className="h-full bg-gradient-to-r from-blue-500 to-purple-500"
-                style={{ width: `${progress}%` }}
-                transition={{ duration: 0.1 }}
-              />
-            </div>
-
-            {/* Control Buttons */}
-            <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between pointer-events-auto">
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={togglePlay}
-                  className="rounded-xl bg-white/10 hover:bg-white/20 backdrop-blur-sm border border-white/20 h-12 w-12"
-                >
-                  {isPlaying ? (
-                    <Pause className="h-5 w-5 text-white" />
-                  ) : (
-                    <Play className="h-5 w-5 text-white ml-0.5" />
-                  )}
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={toggleMute}
-                  className="rounded-xl bg-white/10 hover:bg-white/20 backdrop-blur-sm border border-white/20 h-12 w-12"
-                >
-                  {isMuted ? (
-                    <VolumeX className="h-5 w-5 text-white" />
-                  ) : (
-                    <Volume2 className="h-5 w-5 text-white" />
-                  )}
-                </Button>
-              </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={toggleFullscreen}
-                className="rounded-xl bg-white/10 hover:bg-white/20 backdrop-blur-sm border border-white/20 h-12 w-12"
-              >
-                <Maximize2 className="h-5 w-5 text-white" />
-              </Button>
-            </div>
-          </motion.div>
+    <div className="relative w-full aspect-video bg-black rounded-lg overflow-hidden shadow-2xl">
+      {isLoading && (
+        <div className="absolute inset-0 flex items-center justify-center bg-gray-900 z-10">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
+            <p className="text-white text-sm">Loading video...</p>
+          </div>
         </div>
-      </CardContent>
-    </Card>
+      )}
+      {error && (
+        <div className="absolute inset-0 flex items-center justify-center bg-red-900 text-white p-4 z-10">
+          <div className="text-center">
+            <p className="font-bold mb-2">Error loading video</p>
+            <p className="text-sm">{error}</p>
+          </div>
+        </div>
+      )}
+      <div className="w-full h-full">
+        {renderPlayer()}
+      </div>
+    </div>
   )
 }

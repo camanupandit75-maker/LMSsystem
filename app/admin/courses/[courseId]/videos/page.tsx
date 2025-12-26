@@ -107,11 +107,16 @@ export default async function ModerateVideosPage({ params }: { params: { courseI
                         {video.description && (
                           <p className="text-gray-700 mb-3">{video.description}</p>
                         )}
-                        <div className="flex gap-4 text-sm text-gray-600">
-                          {video.section_name && <span>📂 {video.section_name}</span>}
-                          {video.duration_minutes && <span>⏱️ {video.duration_minutes} min</span>}
-                          {video.is_preview && <span className="text-blue-600 font-medium">👁️ Preview Video</span>}
-                        </div>
+                            <div className="flex gap-4 text-sm text-gray-600 flex-wrap items-center">
+                              {(video as any).video_source === 'youtube' ? (
+                                <span className="text-red-600 font-medium flex items-center gap-1">▶️ YouTube</span>
+                              ) : (
+                                <span className="text-indigo-600 font-medium flex items-center gap-1">📁 Google Drive</span>
+                              )}
+                              {video.section_name && <span>📂 {video.section_name}</span>}
+                              {video.duration_minutes && <span>⏱️ {video.duration_minutes} min</span>}
+                              {video.is_preview && <span className="text-blue-600 font-medium">👁️ Preview Video</span>}
+                            </div>
                         {video.is_approved === false && video.rejection_reason && (
                           <div className="mt-4 bg-red-100 border-2 border-red-300 rounded-lg p-4">
                             <p className="text-sm font-bold text-red-800 mb-1">

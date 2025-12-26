@@ -209,7 +209,12 @@ export default async function CourseDetailPage({ params }: { params: { slug: str
                                 {video.description && (
                                   <p className="text-sm text-gray-600 mt-1 line-clamp-2">{video.description}</p>
                                 )}
-                                <div className="flex gap-3 mt-2 text-xs text-gray-500">
+                                <div className="flex gap-3 mt-2 text-xs text-gray-500 flex-wrap items-center">
+                                  {(video as any).video_source === 'youtube' ? (
+                                    <span className="px-2 py-1 rounded bg-red-100 text-red-700 font-medium flex items-center gap-1">▶️ YouTube</span>
+                                  ) : (
+                                    <span className="px-2 py-1 rounded bg-indigo-100 text-indigo-700 font-medium flex items-center gap-1">📁 Google Drive</span>
+                                  )}
                                   {video.section_name && (
                                     <span className="px-2 py-1 rounded bg-gray-100">📂 {video.section_name}</span>
                                   )}

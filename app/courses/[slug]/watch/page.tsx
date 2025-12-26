@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
-import { GoogleDrivePlayer } from '@/components/GoogleDrivePlayer'
+import { VideoPlayer } from '@/components/VideoPlayer'
 import { ArrowLeft } from 'lucide-react'
 
 export default async function WatchCoursePage({ 
@@ -99,8 +99,9 @@ export default async function WatchCoursePage({
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-0">
           {/* Video Player */}
           <div className="lg:col-span-2 bg-black p-6 lg:p-8">
-            <GoogleDrivePlayer 
-              googleDriveUrl={currentVideo.google_drive_url}
+            <VideoPlayer 
+              videoUrl={currentVideo.google_drive_url}
+              videoSource={(currentVideo as any).video_source || 'google_drive'}
               title={currentVideo.title}
             />
             
@@ -162,7 +163,10 @@ export default async function WatchCoursePage({
                           <h4 className={`font-semibold text-sm mb-1 ${isActive ? 'text-white' : 'text-gray-200'}`}>
                             {video.title}
                           </h4>
-                          <div className="flex gap-2 text-xs opacity-80">
+                          <div className="flex gap-2 text-xs opacity-80 flex-wrap">
+                            <span className="text-base">
+                              {(video as any).video_source === 'youtube' ? '▶️' : '📁'}
+                            </span>
                             {video.duration_minutes && (
                               <span>⏱️ {video.duration_minutes}m</span>
                             )}

@@ -15,7 +15,8 @@ import Link from 'next/link'
 export default function AddVideoPage({ params }: { params: { id: string } }) {
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
-  const [googleDriveUrl, setGoogleDriveUrl] = useState('')
+  const [videoSource, setVideoSource] = useState<'google_drive' | 'youtube'>('google_drive')
+  const [videoUrl, setVideoUrl] = useState('')
   const [sectionName, setSectionName] = useState('')
   const [durationMinutes, setDurationMinutes] = useState('')
   const [isPreview, setIsPreview] = useState(false)
@@ -24,7 +25,20 @@ export default function AddVideoPage({ params }: { params: { id: string } }) {
   const router = useRouter()
   const supabase = createClient()
 
-  const extractFileId = (url: string) => {
+  // Validate Google Drive URL
+  const isValidGoogleDriveUrl = (url: string): boolean => {
+    return url.includes('drive.google.com') && 
+           (url.includes('/file/d/') || url.includes('id='))
+  }
+
+  // Validate YouTube URL
+  const isValidYouTubeUrl = (url: string): boolean => {
+    const youtubeRegex = /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be)\/.+/
+    return youtubeRegex.test(url)
+  }
+
+  // Extract Google Drive file ID
+  const extractGoogleDriveId = (url: string): string | null => {
     const patterns = [
       /\/file\/d\/([^\/]+)/,
       /id=([^&]+)/,
@@ -39,16 +53,30 @@ export default function AddVideoPage({ params }: { params: { id: string } }) {
     return null
   }
 
+  // Extract YouTube video ID
+  const extractYouTubeId = (url: string): string | null => {
+    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/
+    const match = url.match(regExp)
+    return (match && match[2].length === 11) ? match[2] : null
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setError(null)
 
     try {
-      const fileId = extractFileId(googleDriveUrl)
-      if (!fileId) {
-        throw new Error('Invalid Google Drive URL. Please paste a valid shareable link.')
+      // Validate video URL based on source
+      if (videoSource === 'google_drive' && !isValidGoogleDriveUrl(videoUrl)) {
+        throw new Error('Please provide a valid Google Drive link')
       }
+
+      if (videoSource === 'youtube' && !isValidYouTubeUrl(videoUrl)) {
+        throw new Error('Please provide a valid YouTube link')
+      }
+
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) throw new Error('Not authenticated')
 
       // Get next order index
       const { data: videos } = await supabase
@@ -60,20 +88,40 @@ export default function AddVideoPage({ params }: { params: { id: string } }) {
 
       const nextOrder = videos && videos.length > 0 ? videos[0].order_index + 1 : 0
 
+      // Prepare video data based on source
+      const videoData: any = {
+        course_id: params.id,
+        title,
+        description: description || null,
+        video_source: videoSource,
+        section_name: sectionName || null,
+        duration_minutes: durationMinutes ? parseInt(durationMinutes) : null,
+        is_preview: isPreview,
+        order_index: nextOrder
+      }
+
+      // Add source-specific fields
+      if (videoSource === 'google_drive') {
+        const fileId = extractGoogleDriveId(videoUrl)
+        if (!fileId) {
+          throw new Error('Invalid Google Drive URL. Could not extract file ID.')
+        }
+        videoData.google_drive_url = videoUrl
+        videoData.google_drive_file_id = fileId
+      } else {
+        // YouTube
+        const videoId = extractYouTubeId(videoUrl)
+        if (!videoId) {
+          throw new Error('Invalid YouTube URL. Could not extract video ID.')
+        }
+        videoData.google_drive_url = videoUrl // Store YouTube URL in same field for compatibility
+        videoData.google_drive_file_id = videoId // Store YouTube ID in same field
+      }
+
       // Insert video
       const { error: videoError } = await supabase
         .from('course_videos')
-        .insert({
-          course_id: params.id,
-          title,
-          description: description || null,
-          google_drive_url: googleDriveUrl,
-          google_drive_file_id: fileId,
-          section_name: sectionName || null,
-          duration_minutes: durationMinutes ? parseInt(durationMinutes) : null,
-          is_preview: isPreview,
-          order_index: nextOrder
-        })
+        .insert(videoData)
 
       if (videoError) throw videoError
 
@@ -101,7 +149,7 @@ export default function AddVideoPage({ params }: { params: { id: string } }) {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50 p-8">
+    <div className="min-h-screen bg-gradient-to-b from-white to-indigo-50 p-8">
       <div className="max-w-3xl mx-auto">
         <div className="mb-6">
           <Link href={`/instructor/courses/${params.id}`}>
@@ -112,35 +160,18 @@ export default function AddVideoPage({ params }: { params: { id: string } }) {
           </Link>
         </div>
 
-        <Card className="border-0 shadow-xl rounded-2xl">
+        <Card className="bg-white rounded-2xl shadow-xl border border-gray-100">
           <CardHeader>
-            <CardTitle className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
+            <CardTitle className="text-3xl font-bold text-gradient">
               Add Video 📹
             </CardTitle>
             <p className="text-gray-600 mt-2">
-              Upload your video to Google Drive, make it shareable, and paste the link below
+              Choose your video source and add it to your course
             </p>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Google Drive URL */}
-              <div>
-                <Label htmlFor="url" className="text-base font-semibold">Google Drive Video URL *</Label>
-                <Input
-                  id="url"
-                  value={googleDriveUrl}
-                  onChange={(e) => setGoogleDriveUrl(e.target.value)}
-                  placeholder="https://drive.google.com/file/d/..."
-                  required
-                  disabled={loading}
-                  className="mt-2 h-12 rounded-xl"
-                />
-                <p className="text-xs text-gray-500 mt-2">
-                  💡 Make sure the video is set to "Anyone with the link can view" in Google Drive settings
-                </p>
-              </div>
-
-              {/* Title */}
+              {/* Video Title */}
               <div>
                 <Label htmlFor="title" className="text-base font-semibold">Video Title *</Label>
                 <Input
@@ -154,7 +185,7 @@ export default function AddVideoPage({ params }: { params: { id: string } }) {
                 />
               </div>
 
-              {/* Description */}
+              {/* Video Description */}
               <div>
                 <Label htmlFor="description" className="text-base font-semibold">Description</Label>
                 <Textarea
@@ -166,6 +197,104 @@ export default function AddVideoPage({ params }: { params: { id: string } }) {
                   disabled={loading}
                   className="mt-2 rounded-xl"
                 />
+              </div>
+
+              {/* Video Source Selection */}
+              <div>
+                <Label className="mb-3 block text-base font-semibold">Video Source *</Label>
+                <div className="grid grid-cols-2 gap-4">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setVideoSource('google_drive')
+                      setVideoUrl('')
+                    }}
+                    className={`p-5 rounded-xl border-2 transition-all ${
+                      videoSource === 'google_drive'
+                        ? 'border-indigo-600 bg-indigo-50 shadow-md scale-105'
+                        : 'border-gray-300 hover:border-indigo-300 bg-white'
+                    }`}
+                  >
+                    <div className="text-3xl mb-2">📁</div>
+                    <div className={`font-semibold ${videoSource === 'google_drive' ? 'text-indigo-600' : 'text-gray-700'}`}>
+                      Google Drive
+                    </div>
+                    <div className="text-xs text-gray-600 mt-1">Upload from Drive</div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setVideoSource('youtube')
+                      setVideoUrl('')
+                    }}
+                    className={`p-5 rounded-xl border-2 transition-all ${
+                      videoSource === 'youtube'
+                        ? 'border-red-600 bg-red-50 shadow-md scale-105'
+                        : 'border-gray-300 hover:border-red-300 bg-white'
+                    }`}
+                  >
+                    <div className="text-3xl mb-2">▶️</div>
+                    <div className={`font-semibold ${videoSource === 'youtube' ? 'text-red-600' : 'text-gray-700'}`}>
+                      YouTube
+                    </div>
+                    <div className="text-xs text-gray-600 mt-1">Link from YouTube</div>
+                  </button>
+                </div>
+              </div>
+
+              {/* Video URL Input */}
+              <div>
+                <Label htmlFor="videoUrl" className="text-base font-semibold">
+                  {videoSource === 'google_drive' ? 'Google Drive Link' : 'YouTube Link'} *
+                </Label>
+                <Input
+                  id="videoUrl"
+                  type="url"
+                  value={videoUrl}
+                  onChange={(e) => setVideoUrl(e.target.value)}
+                  placeholder={
+                    videoSource === 'google_drive'
+                      ? 'https://drive.google.com/file/d/...'
+                      : 'https://www.youtube.com/watch?v=... or https://youtu.be/...'
+                  }
+                  required
+                  disabled={loading}
+                  className="mt-2 h-12 rounded-xl font-mono text-sm"
+                />
+                <p className="text-xs text-gray-500 mt-2">
+                  {videoSource === 'google_drive' ? (
+                    <>
+                      💡 Make sure the file is set to{' '}
+                      <span className="font-semibold">"Anyone with the link"</span> in sharing settings
+                    </>
+                  ) : (
+                    <>
+                      💡 Video must be{' '}
+                      <span className="font-semibold">public or unlisted</span> on YouTube
+                    </>
+                  )}
+                </p>
+                {videoUrl && videoSource === 'google_drive' && !isValidGoogleDriveUrl(videoUrl) && (
+                  <p className="text-xs text-red-600 mt-1 flex items-center gap-1">
+                    ❌ Invalid Google Drive URL
+                  </p>
+                )}
+                {videoUrl && videoSource === 'youtube' && !isValidYouTubeUrl(videoUrl) && (
+                  <p className="text-xs text-red-600 mt-1 flex items-center gap-1">
+                    ❌ Invalid YouTube URL
+                  </p>
+                )}
+                {videoUrl && videoSource === 'google_drive' && isValidGoogleDriveUrl(videoUrl) && (
+                  <p className="text-xs text-green-600 mt-1 flex items-center gap-1">
+                    ✅ Valid Google Drive URL
+                  </p>
+                )}
+                {videoUrl && videoSource === 'youtube' && isValidYouTubeUrl(videoUrl) && (
+                  <p className="text-xs text-green-600 mt-1 flex items-center gap-1">
+                    ✅ Valid YouTube URL
+                  </p>
+                )}
               </div>
 
               {/* Section Name */}
@@ -205,7 +334,7 @@ export default function AddVideoPage({ params }: { params: { id: string } }) {
                   disabled={loading}
                 />
                 <Label htmlFor="preview" className="cursor-pointer text-base">
-                  Allow free preview (students can watch without enrolling)
+                  👁️ Allow free preview (students can watch without enrolling)
                 </Label>
               </div>
 
@@ -229,8 +358,8 @@ export default function AddVideoPage({ params }: { params: { id: string } }) {
                 </Button>
                 <Button
                   type="submit"
-                  disabled={loading || !title.trim() || !googleDriveUrl.trim()}
-                  className="flex-1 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 rounded-xl"
+                  disabled={loading || !title.trim() || !videoUrl.trim()}
+                  className="flex-1 gradient-primary text-white font-semibold rounded-xl"
                 >
                   {loading ? (
                     <span className="flex items-center gap-2">
@@ -249,19 +378,27 @@ export default function AddVideoPage({ params }: { params: { id: string } }) {
         {/* Help Section */}
         <Card className="mt-6 bg-blue-50 border-blue-200 border-0 shadow-lg rounded-2xl">
           <CardContent className="p-6">
-            <h3 className="font-semibold mb-3 text-lg">📝 How to get Google Drive link:</h3>
-            <ol className="space-y-2 text-sm text-gray-700 list-decimal list-inside">
-              <li>Upload your video to Google Drive</li>
-              <li>Right-click the video → "Share"</li>
-              <li>Change to "Anyone with the link"</li>
-              <li>Copy the link and paste it above</li>
-            </ol>
+            <h3 className="font-semibold mb-3 text-lg">
+              {videoSource === 'google_drive' ? '📝 How to get Google Drive link:' : '📝 How to get YouTube link:'}
+            </h3>
+            {videoSource === 'google_drive' ? (
+              <ol className="space-y-2 text-sm text-gray-700 list-decimal list-inside">
+                <li>Upload your video to Google Drive</li>
+                <li>Right-click the video → "Share"</li>
+                <li>Change to "Anyone with the link"</li>
+                <li>Copy the link and paste it above</li>
+              </ol>
+            ) : (
+              <ol className="space-y-2 text-sm text-gray-700 list-decimal list-inside">
+                <li>Upload your video to YouTube</li>
+                <li>Set visibility to "Public" or "Unlisted"</li>
+                <li>Copy the video URL from the address bar</li>
+                <li>Paste it above (supports youtube.com/watch?v= or youtu.be/ formats)</li>
+              </ol>
+            )}
           </CardContent>
         </Card>
       </div>
     </div>
   )
 }
-
-
-

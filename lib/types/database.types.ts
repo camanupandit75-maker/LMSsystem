@@ -75,6 +75,7 @@ export interface CourseVideo {
   description?: string;
   google_drive_url: string;
   google_drive_file_id?: string;
+  video_source?: 'google_drive' | 'youtube';
   section_name?: string;
   order_index: number;
   duration_minutes?: number;

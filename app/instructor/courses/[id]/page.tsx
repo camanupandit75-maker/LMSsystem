@@ -123,6 +123,15 @@ export default async function ManageCoursePage({ params }: { params: { id: strin
                             <p className="text-sm text-gray-600 mb-3 line-clamp-2">{video.description}</p>
                           )}
                           <div className="flex flex-wrap gap-3 mt-2 text-xs text-gray-500">
+                            {(video as any).video_source === 'youtube' ? (
+                              <span className="px-2 py-1 rounded bg-red-100 text-red-700 font-medium flex items-center gap-1">
+                                ▶️ YouTube
+                              </span>
+                            ) : (
+                              <span className="px-2 py-1 rounded bg-indigo-100 text-indigo-700 font-medium flex items-center gap-1">
+                                📁 Google Drive
+                              </span>
+                            )}
                             {video.section_name && (
                               <span className="px-2 py-1 rounded bg-gray-100">📂 {video.section_name}</span>
                             )}
