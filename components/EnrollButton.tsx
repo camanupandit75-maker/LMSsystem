@@ -47,12 +47,13 @@ export function EnrollButton({ courseId, courseSlug, price, instructorId }: Enro
       // For now, create enrollment directly (TODO: Add payment processing with Stripe)
       // In production, this would go through Stripe checkout first
       
-      // Create enrollment
+      // Create enrollment with proper amount
       const { data: enrollment, error: enrollError } = await supabase
         .from('enrollments')
         .insert({
           student_id: session.user.id,
           course_id: courseId,
+          amount: price,
           amount_paid: price,
           progress_percentage: 0,
           is_active: true

@@ -8,7 +8,7 @@ import Footer from "@/components/layout/Footer"
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "LMS Platform - Learning Management System",
+  title: "ScholaPulse - Learning Management System",
   description: "Upload, manage, and watch educational videos",
 }
 

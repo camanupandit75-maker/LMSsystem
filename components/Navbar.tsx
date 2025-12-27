@@ -131,7 +131,7 @@ export function Navbar() {
               <Video className="h-6 w-6 relative z-10 text-blue-600 dark:text-blue-400" />
             </motion.div>
             <span className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-              LMS Platform
+              ScholaPulse
             </span>
           </Link>
 
