@@ -250,24 +250,41 @@ export default async function InstructorDashboard() {
                 {recentReviews.map((review: any) => (
                   <div
                     key={review.id}
-                    className="border-l-4 border-indigo-500 bg-indigo-50/50 rounded-r-lg pl-4 pr-4 py-3 hover:bg-indigo-50 transition-colors"
+                    className="bg-white border border-indigo-100 rounded-lg p-4 hover:shadow-md transition-shadow"
                   >
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex-1">
-                        {/* Rating & Student Name */}
+                        {/* Course Title as Header */}
+                        <div className="flex items-center gap-2 mb-3 pb-2 border-b border-gray-100">
+                          <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                          </svg>
+                          <h3 className="font-bold text-indigo-900">
+                            {review.course?.title}
+                          </h3>
+                        </div>
+
+                        {/* Student Info & Rating */}
                         <div className="flex items-center gap-3 mb-2">
                           <div className="flex gap-0.5">
                             {[1, 2, 3, 4, 5].map((star) => (
-                              <Star
+                              <svg
                                 key={star}
                                 className={`w-4 h-4 ${
                                   star <= review.rating ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300'
                                 }`}
-                              />
+                                fill="currentColor"
+                                viewBox="0 0 20 20"
+                              >
+                                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                              </svg>
                             ))}
                           </div>
-                          <span className="font-semibold text-sm text-gray-900">
+                          <span className="font-semibold text-sm text-gray-700">
                             {review.student?.full_name || 'Anonymous'}
+                          </span>
+                          <span className="text-xs text-gray-500">
+                            •
                           </span>
                           <span className="text-xs text-gray-500">
                             {new Date(review.created_at).toLocaleDateString('en-US', {
@@ -277,25 +294,20 @@ export default async function InstructorDashboard() {
                           </span>
                         </div>
 
-                        {/* Course Name */}
-                        <p className="text-xs text-indigo-600 font-medium mb-1">
-                          {review.course?.title}
-                        </p>
-
                         {/* Review Text */}
                         {review.review_text && (
-                          <p className="text-sm text-gray-700 line-clamp-2">
+                          <p className="text-sm text-gray-700 mt-2">
                             {review.review_text}
                           </p>
                         )}
                       </div>
 
-                      {/* Course Thumbnail (optional) */}
+                      {/* Course Thumbnail */}
                       {review.course?.thumbnail_url && (
                         <img
                           src={review.course.thumbnail_url}
                           alt={review.course.title}
-                          className="w-16 h-16 rounded object-cover flex-shrink-0"
+                          className="w-20 h-20 rounded-lg object-cover flex-shrink-0 border border-gray-200"
                         />
                       )}
                     </div>
