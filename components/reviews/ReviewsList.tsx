@@ -78,3 +78,4 @@ export async function ReviewsList({ courseId }: ReviewsListProps) {
   )
 }
 
+

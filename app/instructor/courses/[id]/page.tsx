@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
-import { ArrowLeft, Plus, Edit, Play, Globe, EyeOff } from 'lucide-react'
+import { ArrowLeft, Plus, Edit, Play, Globe, EyeOff, Star } from 'lucide-react'
 import { PublishButton } from './publish-button'
 import { DeleteVideoButton } from '@/components/videos/DeleteVideoButton'
 
@@ -32,6 +32,20 @@ export default async function ManageCoursePage({ params }: { params: { id: strin
     .eq('course_id', params.id)
     .order('order_index', { ascending: true })
 
+  // Fetch reviews for this course
+  const { data: reviews } = await supabase
+    .from('course_reviews')
+    .select(`
+      *,
+      student:user_profiles!course_reviews_student_id_fkey(
+        id,
+        full_name,
+        avatar_url
+      )
+    `)
+    .eq('course_id', params.id)
+    .order('created_at', { ascending: false })
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-cyan-50 p-8">
       <div className="max-w-7xl mx-auto">
@@ -52,6 +66,34 @@ export default async function ManageCoursePage({ params }: { params: { id: strin
                   {course.title}
                 </CardTitle>
                 <p className="text-gray-600 text-lg">{course.description}</p>
+                
+                {/* Rating Summary */}
+                {(course.average_rating || course.total_reviews > 0) && (
+                  <div className="flex items-center gap-6 mt-4 pt-4 border-t border-gray-200">
+                    <div className="flex items-center gap-3">
+                      <span className="text-4xl font-bold text-gray-900">
+                        {course.average_rating ? course.average_rating.toFixed(1) : '—'}
+                      </span>
+                      <div>
+                        <div className="flex gap-1">
+                          {[1, 2, 3, 4, 5].map((star) => (
+                            <Star
+                              key={star}
+                              className={`w-6 h-6 ${
+                                star <= Math.floor(course.average_rating || 0)
+                                  ? 'text-yellow-400 fill-yellow-400'
+                                  : 'text-gray-300'
+                              }`}
+                            />
+                          ))}
+                        </div>
+                        <p className="text-sm text-gray-600 mt-1">
+                          {course.total_reviews || 0} review{(course.total_reviews || 0) !== 1 ? 's' : ''}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
               <div className="flex gap-2">
                 <PublishButton courseId={params.id} currentStatus={course.status} />
@@ -177,6 +219,91 @@ export default async function ManageCoursePage({ params }: { params: { id: strin
                     Add Your First Video
                   </Button>
                 </Link>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Reviews Section */}
+        <Card className="mt-8 border-0 shadow-xl rounded-2xl">
+          <CardHeader>
+            <CardTitle className="text-2xl font-bold flex items-center gap-3">
+              <Star className="w-7 h-7 text-indigo-600 fill-indigo-600" />
+              Student Reviews
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {reviews && reviews.length > 0 ? (
+              <div className="space-y-6">
+                {reviews.map((review: any) => (
+                  <div key={review.id} className="border-b border-gray-200 pb-6 last:border-0 last:pb-0">
+                    <div className="flex items-start gap-4">
+                      {/* Avatar */}
+                      <div className="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white font-semibold text-lg shadow-lg flex-shrink-0">
+                        {review.student?.full_name?.[0]?.toUpperCase() || 'U'}
+                      </div>
+
+                      <div className="flex-1">
+                        {/* Header: Name, Rating, Date */}
+                        <div className="flex items-center gap-3 mb-2 flex-wrap">
+                          <span className="font-semibold text-gray-900">
+                            {review.student?.full_name || 'Anonymous Student'}
+                          </span>
+                          
+                          {/* Star Rating */}
+                          <div className="flex gap-0.5">
+                            {[1, 2, 3, 4, 5].map((star) => (
+                              <Star
+                                key={star}
+                                className={`w-4 h-4 ${
+                                  star <= review.rating
+                                    ? 'text-yellow-400 fill-yellow-400'
+                                    : 'text-gray-300'
+                                }`}
+                              />
+                            ))}
+                          </div>
+
+                          {/* Date */}
+                          <span className="text-sm text-gray-500">
+                            {new Date(review.created_at).toLocaleDateString('en-US', {
+                              year: 'numeric',
+                              month: 'short',
+                              day: 'numeric'
+                            })}
+                          </span>
+
+                          {/* Verified Badge */}
+                          {review.is_verified_purchase && (
+                            <span className="inline-flex items-center gap-1 text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full font-medium">
+                              <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                              </svg>
+                              Verified Purchase
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Review Text */}
+                        {review.review_text && (
+                          <p className="text-gray-700 leading-relaxed mt-2">
+                            {review.review_text}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-16">
+                <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gray-100 flex items-center justify-center">
+                  <Star className="w-10 h-10 text-gray-400" />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">No reviews yet</h3>
+                <p className="text-gray-600">
+                  Once students enroll and complete your course, their reviews will appear here.
+                </p>
               </div>
             )}
           </CardContent>

@@ -166,13 +166,13 @@ export default async function CourseDetailPage({ params }: { params: { slug: str
                 </h1>
                 
                 {/* Rating Display */}
-                {course.rating && course.rating > 0 && (
+                {course.average_rating && course.average_rating > 0 && (
                   <div className="flex items-center gap-2 mb-4">
                     <Star className="w-5 h-5 fill-yellow-400 text-yellow-400" />
-                    <span className="font-bold text-xl text-gray-900">{course.rating.toFixed(1)}</span>
-                    {course.review_count > 0 && (
+                    <span className="font-bold text-xl text-gray-900">{course.average_rating.toFixed(1)}</span>
+                    {course.total_reviews > 0 && (
                       <span className="text-gray-600">
-                        ({course.review_count} {course.review_count === 1 ? 'review' : 'reviews'})
+                        ({course.total_reviews} {course.total_reviews === 1 ? 'review' : 'reviews'})
                       </span>
                     )}
                   </div>
@@ -325,7 +325,7 @@ export default async function CourseDetailPage({ params }: { params: { slug: str
                 {/* Reviews List */}
                 <div>
                   <h3 className="text-lg font-semibold mb-4">
-                    All Reviews ({course.review_count || 0})
+                    All Reviews ({course.total_reviews || 0})
                   </h3>
                   <ReviewsList courseId={course.id} />
                 </div>

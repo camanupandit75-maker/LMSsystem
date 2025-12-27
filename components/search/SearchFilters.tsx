@@ -168,3 +168,4 @@ export function SearchFilters({ categories }: SearchFiltersProps) {
   )
 }
 
+

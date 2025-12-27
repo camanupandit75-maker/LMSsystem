@@ -17,3 +17,4 @@ export async function generateTranscription(videoUrl: string): Promise<string> {
 
 
 
+

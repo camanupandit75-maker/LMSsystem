@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 import { DashboardSwitcher } from '@/components/DashboardSwitcher'
-import { BookOpen, Users, DollarSign, TrendingUp, Star } from 'lucide-react'
+import { BookOpen, Users, DollarSign, TrendingUp, Star, GraduationCap, CheckCircle2, Plus } from 'lucide-react'
 
 export default async function InstructorDashboard() {
   const supabase = await createClient()
@@ -37,103 +37,198 @@ export default async function InstructorDashboard() {
     .eq('instructor_id', session.user.id)
     .order('created_at', { ascending: false })
 
+  // Get recent reviews across all instructor's courses
+  // First get course IDs for this instructor
+  const courseIds = courses?.map(c => c.id) || []
+  
+  let recentReviews = null
+  if (courseIds.length > 0) {
+    const { data } = await supabase
+      .from('course_reviews')
+      .select(`
+        *,
+        course:courses(id, title, thumbnail_url),
+        student:user_profiles!course_reviews_student_id_fkey(full_name)
+      `)
+      .in('course_id', courseIds)
+      .order('created_at', { ascending: false })
+      .limit(5)
+    recentReviews = data
+  }
+
+  // Calculate overall rating stats
+  const { data: coursesWithRatings } = await supabase
+    .from('courses')
+    .select('average_rating, total_reviews')
+    .eq('instructor_id', session.user.id)
+
+  const totalReviews = coursesWithRatings?.reduce((sum, c) => sum + (c.total_reviews || 0), 0) || 0
+  const coursesWithValidRatings = coursesWithRatings?.filter(c => c.average_rating !== null && c.average_rating > 0) || []
+  const avgRating = coursesWithValidRatings.length > 0
+    ? coursesWithValidRatings.reduce((sum, c) => sum + (c.average_rating || 0), 0) / coursesWithValidRatings.length
+    : 0
+
   // Calculate total allowed courses (base + bonus)
   const totalAllowed = (subscription?.max_courses || 0) + (subscription?.bonus_courses || 0)
   const usedCourses = subscription?.used_courses || 0
   const remainingCourses = totalAllowed - usedCourses
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-cyan-50 p-8">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-blue-50/50 p-6 md:p-8">
       <div className="max-w-7xl mx-auto">
         <DashboardSwitcher />
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
-            Welcome back, {profile?.full_name}! 👋
-          </h1>
-          <p className="text-gray-600 mt-2">Here's an overview of your teaching journey</p>
+        <div className="mb-10">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="p-2.5 rounded-2xl bg-gradient-to-br from-purple-500 to-blue-600 shadow-lg shadow-purple-500/30">
+              <GraduationCap className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <h1 className="text-4xl md:text-5xl font-extrabold bg-gradient-to-r from-purple-600 via-blue-600 to-cyan-600 bg-clip-text text-transparent tracking-tight">
+                Welcome back, {profile?.full_name}!
+              </h1>
+            </div>
+          </div>
+          <p className="text-gray-600 text-lg font-medium ml-14">Here's an overview of your teaching journey</p>
         </div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <Card className="hover:shadow-lg transition-shadow">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-gray-600">Total Courses</CardTitle>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-6 mb-10">
+          <Card className="group relative overflow-hidden border-2 border-purple-100/50 bg-gradient-to-br from-white to-purple-50/30 hover:border-purple-300 hover:shadow-2xl hover:shadow-purple-500/20 transition-all duration-500 hover:-translate-y-1">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-purple-400/20 to-transparent rounded-full blur-2xl"></div>
+            <CardHeader className="pb-3 relative z-10">
+              <div className="flex items-center justify-between mb-2">
+                <CardTitle className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Total Courses</CardTitle>
+                <div className="p-2 rounded-xl bg-purple-100 group-hover:bg-purple-200 transition-colors">
+                  <BookOpen className="w-5 h-5 text-purple-600" />
+                </div>
+              </div>
             </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">{courses?.length || 0}</div>
-              <p className="text-xs text-gray-500 mt-1">
+            <CardContent className="relative z-10">
+              <div className="text-4xl font-extrabold bg-gradient-to-r from-purple-600 to-purple-800 bg-clip-text text-transparent">
+                {courses?.length || 0}
+              </div>
+              <p className="text-xs text-gray-600 mt-2 font-medium">
                 {usedCourses} / {totalAllowed} used
               </p>
               {subscription?.bonus_courses > 0 && (
-                <p className="text-xs text-green-600 mt-0.5">
+                <p className="text-xs text-green-600 mt-1 font-semibold">
                   +{subscription.bonus_courses} bonus
                 </p>
               )}
             </CardContent>
           </Card>
 
-          <Card className="hover:shadow-lg transition-shadow">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-gray-600">Published</CardTitle>
+          <Card className="group relative overflow-hidden border-2 border-green-100/50 bg-gradient-to-br from-white to-green-50/30 hover:border-green-300 hover:shadow-2xl hover:shadow-green-500/20 transition-all duration-500 hover:-translate-y-1">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-green-400/20 to-transparent rounded-full blur-2xl"></div>
+            <CardHeader className="pb-3 relative z-10">
+              <div className="flex items-center justify-between mb-2">
+                <CardTitle className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Published</CardTitle>
+                <div className="p-2 rounded-xl bg-green-100 group-hover:bg-green-200 transition-colors">
+                  <CheckCircle2 className="w-5 h-5 text-green-600" />
+                </div>
+              </div>
             </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-green-600">
+            <CardContent className="relative z-10">
+              <div className="text-4xl font-extrabold bg-gradient-to-r from-green-600 to-emerald-700 bg-clip-text text-transparent">
                 {courses?.filter(c => c.status === 'published').length || 0}
               </div>
             </CardContent>
           </Card>
 
-          <Card className="hover:shadow-lg transition-shadow">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-gray-600">Total Students</CardTitle>
+          <Card className="group relative overflow-hidden border-2 border-blue-100/50 bg-gradient-to-br from-white to-blue-50/30 hover:border-blue-300 hover:shadow-2xl hover:shadow-blue-500/20 transition-all duration-500 hover:-translate-y-1">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-blue-400/20 to-transparent rounded-full blur-2xl"></div>
+            <CardHeader className="pb-3 relative z-10">
+              <div className="flex items-center justify-between mb-2">
+                <CardTitle className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Total Students</CardTitle>
+                <div className="p-2 rounded-xl bg-blue-100 group-hover:bg-blue-200 transition-colors">
+                  <Users className="w-5 h-5 text-blue-600" />
+                </div>
+              </div>
             </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">
+            <CardContent className="relative z-10">
+              <div className="text-4xl font-extrabold bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent">
                 {courses?.reduce((sum, c) => sum + (c.enrollment_count || 0), 0) || 0}
               </div>
             </CardContent>
           </Card>
 
-          <Card className="hover:shadow-lg transition-shadow">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-gray-600">Total Revenue</CardTitle>
+          <Card className="group relative overflow-hidden border-2 border-emerald-100/50 bg-gradient-to-br from-white to-emerald-50/30 hover:border-emerald-300 hover:shadow-2xl hover:shadow-emerald-500/20 transition-all duration-500 hover:-translate-y-1">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-emerald-400/20 to-transparent rounded-full blur-2xl"></div>
+            <CardHeader className="pb-3 relative z-10">
+              <div className="flex items-center justify-between mb-2">
+                <CardTitle className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Total Revenue</CardTitle>
+                <div className="p-2 rounded-xl bg-emerald-100 group-hover:bg-emerald-200 transition-colors">
+                  <DollarSign className="w-5 h-5 text-emerald-600" />
+                </div>
+              </div>
             </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-green-600">
+            <CardContent className="relative z-10">
+              <div className="text-4xl font-extrabold bg-gradient-to-r from-emerald-600 to-green-700 bg-clip-text text-transparent">
                 ${courses?.reduce((sum, c) => sum + (c.total_revenue || 0), 0).toFixed(2) || '0.00'}
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Average Rating Card */}
+          <Card className="group relative overflow-hidden border-2 border-yellow-100/50 bg-gradient-to-br from-white to-yellow-50/30 hover:border-yellow-300 hover:shadow-2xl hover:shadow-yellow-500/20 transition-all duration-500 hover:-translate-y-1">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-yellow-400/20 to-transparent rounded-full blur-2xl"></div>
+            <CardHeader className="pb-3 relative z-10">
+              <div className="flex items-center justify-between mb-2">
+                <CardTitle className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Average Rating</CardTitle>
+                <div className="p-2 rounded-xl bg-yellow-100 group-hover:bg-yellow-200 transition-colors">
+                  <Star className="w-5 h-5 text-yellow-600 fill-yellow-600" />
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="relative z-10">
+              <div className="flex items-baseline gap-2">
+                <p className="text-4xl font-extrabold bg-gradient-to-r from-yellow-600 to-orange-600 bg-clip-text text-transparent">
+                  {avgRating > 0 ? avgRating.toFixed(1) : '—'}
+                </p>
+                {avgRating > 0 && (
+                  <Star className="w-6 h-6 text-yellow-500 fill-yellow-500" />
+                )}
+              </div>
+              <p className="text-xs text-gray-600 mt-2 font-medium">
+                {totalReviews} total review{totalReviews !== 1 ? 's' : ''}
+              </p>
             </CardContent>
           </Card>
         </div>
 
         {/* Subscription Card */}
-        <Card className="mb-8 border-2 border-purple-200">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <span>🎓</span> Subscription Plan
+        <Card className="mb-10 border-2 border-purple-200/50 bg-gradient-to-br from-purple-50/50 to-blue-50/50 shadow-xl hover:shadow-2xl hover:shadow-purple-500/20 transition-all duration-500">
+          <CardHeader className="border-b border-purple-100/50 pb-4">
+            <CardTitle className="flex items-center gap-3 text-xl">
+              <div className="p-2 rounded-xl bg-gradient-to-br from-purple-500 to-blue-600 shadow-lg">
+                <GraduationCap className="w-5 h-5 text-white" />
+              </div>
+              <span className="font-bold text-gray-900">Subscription Plan</span>
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="flex items-center justify-between">
+          <CardContent className="pt-6">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
               <div>
-                <div className="text-2xl font-bold capitalize">{subscription?.tier || 'Free'} Plan</div>
-                <p className="text-gray-600 mt-1">
+                <div className="text-3xl font-extrabold capitalize bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent mb-2">
+                  {subscription?.tier || 'Free'} Plan
+                </div>
+                <p className="text-gray-700 font-medium mt-1">
                   {totalAllowed} course{totalAllowed !== 1 ? 's' : ''} allowed
                   {subscription?.bonus_courses > 0 && (
-                    <span className="text-green-600 font-semibold">
-                      {' '}({subscription.max_courses} base + {subscription.bonus_courses} bonus)
+                    <span className="text-green-600 font-semibold ml-1">
+                      ({subscription.max_courses} base + {subscription.bonus_courses} bonus)
                     </span>
                   )}
                 </p>
                 {remainingCourses > 0 && (
-                  <p className="text-sm text-gray-500 mt-1">
+                  <p className="text-sm text-gray-600 mt-2 font-medium">
                     {remainingCourses} course{remainingCourses !== 1 ? 's' : ''} remaining
                   </p>
                 )}
               </div>
               <Link href="/instructor/subscription">
-                <Button className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700">
+                <Button className="bg-gradient-to-r from-purple-600 via-blue-600 to-cyan-600 hover:from-purple-700 hover:via-blue-700 hover:to-cyan-700 text-white shadow-lg shadow-purple-500/30 hover:shadow-xl hover:shadow-purple-500/40 transition-all duration-300 hover:scale-105">
                   Upgrade Plan
                 </Button>
               </Link>
@@ -141,13 +236,97 @@ export default async function InstructorDashboard() {
           </CardContent>
         </Card>
 
+        {/* Recent Reviews Section */}
+        <Card className="mb-10 border-2 border-gray-100 shadow-xl">
+          <CardHeader className="flex flex-row items-center justify-between border-b border-gray-100 pb-6">
+            <div>
+              <CardTitle className="text-2xl font-bold text-gray-900">Recent Reviews</CardTitle>
+              <p className="text-sm text-gray-500 mt-1">Latest feedback from your students</p>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {recentReviews && recentReviews.length > 0 ? (
+              <div className="space-y-4">
+                {recentReviews.map((review: any) => (
+                  <div
+                    key={review.id}
+                    className="border-l-4 border-indigo-500 bg-indigo-50/50 rounded-r-lg pl-4 pr-4 py-3 hover:bg-indigo-50 transition-colors"
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1">
+                        {/* Rating & Student Name */}
+                        <div className="flex items-center gap-3 mb-2">
+                          <div className="flex gap-0.5">
+                            {[1, 2, 3, 4, 5].map((star) => (
+                              <Star
+                                key={star}
+                                className={`w-4 h-4 ${
+                                  star <= review.rating ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300'
+                                }`}
+                              />
+                            ))}
+                          </div>
+                          <span className="font-semibold text-sm text-gray-900">
+                            {review.student?.full_name || 'Anonymous'}
+                          </span>
+                          <span className="text-xs text-gray-500">
+                            {new Date(review.created_at).toLocaleDateString('en-US', {
+                              month: 'short',
+                              day: 'numeric'
+                            })}
+                          </span>
+                        </div>
+
+                        {/* Course Name */}
+                        <p className="text-xs text-indigo-600 font-medium mb-1">
+                          {review.course?.title}
+                        </p>
+
+                        {/* Review Text */}
+                        {review.review_text && (
+                          <p className="text-sm text-gray-700 line-clamp-2">
+                            {review.review_text}
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Course Thumbnail (optional) */}
+                      {review.course?.thumbnail_url && (
+                        <img
+                          src={review.course.thumbnail_url}
+                          alt={review.course.title}
+                          className="w-16 h-16 rounded object-cover flex-shrink-0"
+                        />
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-12">
+                <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-100 flex items-center justify-center">
+                  <Star className="w-8 h-8 text-gray-400" />
+                </div>
+                <p className="text-gray-600">No reviews yet</p>
+                <p className="text-sm text-gray-500 mt-1">
+                  Reviews from your students will appear here
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
         {/* Courses Section */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle>Your Courses</CardTitle>
+        <Card className="border-2 border-gray-100 shadow-xl">
+          <CardHeader className="flex flex-row items-center justify-between border-b border-gray-100 pb-6">
+            <div>
+              <CardTitle className="text-2xl font-bold text-gray-900">Your Courses</CardTitle>
+              <p className="text-sm text-gray-500 mt-1">Manage and track your course performance</p>
+            </div>
             <Link href="/instructor/courses/new">
-              <Button className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700">
-                + Create Course
+              <Button className="bg-gradient-to-r from-purple-600 via-blue-600 to-cyan-600 hover:from-purple-700 hover:via-blue-700 hover:to-cyan-700 text-white shadow-lg shadow-purple-500/30 hover:shadow-xl hover:shadow-purple-500/40 transition-all duration-300 hover:scale-105">
+                <Plus className="w-4 h-4 mr-2" />
+                Create Course
               </Button>
             </Link>
           </CardHeader>
@@ -157,20 +336,20 @@ export default async function InstructorDashboard() {
                 {courses.map((course) => (
                   <div 
                     key={course.id} 
-                    className="border rounded-lg p-4 hover:shadow-md transition-all hover:border-purple-300"
+                    className="group border-2 border-gray-200 rounded-2xl p-5 bg-white hover:border-purple-300 hover:shadow-xl hover:shadow-purple-500/10 transition-all duration-500 hover:-translate-y-1"
                   >
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
                         <h3 className="font-semibold text-lg">{course.title}</h3>
                         <p className="text-gray-600 text-sm mt-1 line-clamp-2">{course.description}</p>
                         {/* Rating */}
-                        {course.rating && course.rating > 0 && (
+                        {course.average_rating && course.average_rating > 0 && (
                           <div className="flex items-center gap-1 mt-2">
                             <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
-                            <span className="text-xs font-semibold text-gray-900">{course.rating.toFixed(1)}</span>
-                            {course.review_count > 0 && (
+                            <span className="text-xs font-semibold text-gray-900">{course.average_rating.toFixed(1)}</span>
+                            {course.total_reviews > 0 && (
                               <span className="text-xs text-gray-500">
-                                ({course.review_count})
+                                ({course.total_reviews})
                               </span>
                             )}
                           </div>
@@ -199,7 +378,9 @@ export default async function InstructorDashboard() {
                           {course.status}
                         </span>
                         <Link href={`/instructor/courses/${course.id}`}>
-                          <Button variant="outline" size="sm">Manage</Button>
+                          <Button variant="outline" size="sm" className="border-2 hover:border-purple-300 hover:bg-purple-50 hover:text-purple-700 font-semibold transition-all duration-300">
+                            Manage
+                          </Button>
                         </Link>
                       </div>
                     </div>
@@ -207,12 +388,15 @@ export default async function InstructorDashboard() {
                 ))}
               </div>
             ) : (
-              <div className="text-center py-12 text-gray-500">
-                <div className="text-6xl mb-4">📚</div>
-                <p className="text-lg font-medium">No courses yet</p>
-                <p className="text-sm mt-2 mb-4">Create your first course to start teaching!</p>
+              <div className="text-center py-16 text-gray-500">
+                <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-gradient-to-br from-purple-100 to-blue-100 mb-6">
+                  <BookOpen className="w-12 h-12 text-purple-600" />
+                </div>
+                <p className="text-xl font-bold text-gray-900 mb-2">No courses yet</p>
+                <p className="text-sm mt-2 mb-6 text-gray-600">Create your first course to start teaching!</p>
                 <Link href="/instructor/courses/new">
-                  <Button className="bg-gradient-to-r from-purple-600 to-blue-600">
+                  <Button className="bg-gradient-to-r from-purple-600 via-blue-600 to-cyan-600 hover:from-purple-700 hover:via-blue-700 hover:to-cyan-700 text-white shadow-lg shadow-purple-500/30 hover:shadow-xl hover:shadow-purple-500/40 transition-all duration-300 hover:scale-105">
+                    <Plus className="w-4 h-4 mr-2" />
                     Create Your First Course
                   </Button>
                 </Link>

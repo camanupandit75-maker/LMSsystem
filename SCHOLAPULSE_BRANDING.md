@@ -71,3 +71,4 @@ Some dashboard and course pages may still have old color schemes. To update them
 - [ ] Buttons use indigo/violet gradients
 - [ ] All purple/blue replaced with indigo/violet
 
+

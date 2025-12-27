@@ -50,3 +50,4 @@ import { ScholaPulseLogo } from '@/components/ScholaPulseLogo'
 
 If the logo files are missing, the component will show a broken image icon. Make sure to add both files for the branding to work correctly.
 
+

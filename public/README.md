@@ -21,3 +21,4 @@ public/
 └── scholapulse-logo.png  ← Add your logo file here
 ```
 
+

@@ -139,13 +139,13 @@ export default async function InstructorCoursesPage() {
                           </span>
                         </div>
                         {/* Rating */}
-                        {course.rating && course.rating > 0 && (
+                        {course.average_rating && course.average_rating > 0 && (
                           <div className="flex items-center gap-2 mb-2">
                             <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                            <span className="font-semibold text-sm text-gray-900">{course.rating.toFixed(1)}</span>
-                            {course.review_count > 0 && (
+                            <span className="font-semibold text-sm text-gray-900">{course.average_rating.toFixed(1)}</span>
+                            {course.total_reviews > 0 && (
                               <span className="text-xs text-gray-500">
-                                ({course.review_count} {course.review_count === 1 ? 'review' : 'reviews'})
+                                ({course.total_reviews} {course.total_reviews === 1 ? 'review' : 'reviews'})
                               </span>
                             )}
                           </div>
