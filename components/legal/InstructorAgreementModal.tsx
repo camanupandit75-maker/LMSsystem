@@ -197,8 +197,8 @@ export default function InstructorAgreementModal({ onAccept, onCancel }: Instruc
                     <li>Any claims made by students regarding your content</li>
                   </ul>
                   <p className="mb-4">
-                    ScholaPulse provides the platform {"\"as is\""} and makes no warranties regarding the platform&apos;s availability, 
-                    functionality, or suitability for your purposes.
+                    {`ScholaPulse provides the platform "as is" and makes no warranties regarding the platform's availability, 
+                    functionality, or suitability for your purposes.`}
                   </p>
                 </section>
 
@@ -222,8 +222,8 @@ export default function InstructorAgreementModal({ onAccept, onCancel }: Instruc
                 <section>
                   <h4 className="text-xl font-semibold mb-3 text-gray-900">10. Acceptance</h4>
                   <p className="mb-4">
-                    By clicking {"\"Accept\""} below, you acknowledge that you have read, understood, and agree to be bound by this 
-                    Instructor Agreement. You also confirm that you have the legal authority to enter into this agreement.
+                    {`By clicking "Accept" below, you acknowledge that you have read, understood, and agree to be bound by this 
+                    Instructor Agreement. You also confirm that you have the legal authority to enter into this agreement.`}
                   </p>
                   <p className="mb-4 font-semibold text-gray-900">
                     This agreement is a legally binding contract. Please read it carefully before accepting.
