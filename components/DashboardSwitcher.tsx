@@ -36,6 +36,7 @@ export function DashboardSwitcher() {
     }
 
     loadData()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   if (!profile) return null
@@ -81,6 +82,8 @@ export function DashboardSwitcher() {
     </div>
   )
 }
+
+
 
 
 

@@ -47,6 +47,7 @@ export default function InstructorAgreementModal({ onAccept, onCancel }: Instruc
         container.removeEventListener('scroll', checkScroll)
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const handleAccept = async () => {
@@ -196,7 +197,7 @@ export default function InstructorAgreementModal({ onAccept, onCancel }: Instruc
                     <li>Any claims made by students regarding your content</li>
                   </ul>
                   <p className="mb-4">
-                    ScholaPulse provides the platform "as is" and makes no warranties regarding the platform's availability, 
+                    ScholaPulse provides the platform {"\"as is\""} and makes no warranties regarding the platform&apos;s availability, 
                     functionality, or suitability for your purposes.
                   </p>
                 </section>
@@ -221,7 +222,7 @@ export default function InstructorAgreementModal({ onAccept, onCancel }: Instruc
                 <section>
                   <h4 className="text-xl font-semibold mb-3 text-gray-900">10. Acceptance</h4>
                   <p className="mb-4">
-                    By clicking "Accept" below, you acknowledge that you have read, understood, and agree to be bound by this 
+                    By clicking {"\"Accept\""} below, you acknowledge that you have read, understood, and agree to be bound by this 
                     Instructor Agreement. You also confirm that you have the legal authority to enter into this agreement.
                   </p>
                   <p className="mb-4 font-semibold text-gray-900">
@@ -296,5 +297,7 @@ export default function InstructorAgreementModal({ onAccept, onCancel }: Instruc
     </div>
   )
 }
+
+
 
 

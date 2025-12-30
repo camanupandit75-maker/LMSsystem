@@ -176,7 +176,7 @@ export default function SignInPage() {
               </Button>
             </form>
             <div className="mt-6 text-center text-sm">
-              <span className="text-muted-foreground">Don't have an account? </span>
+              <span className="text-muted-foreground">Don&apos;t have an account? </span>
               <Link
                 href="/auth/signup"
                 className="text-blue-600 dark:text-blue-400 hover:underline font-semibold"

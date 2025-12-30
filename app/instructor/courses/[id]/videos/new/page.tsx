@@ -412,7 +412,7 @@ export default function AddVideoPage({ params }: { params: { id: string } }) {
                   {videoSource === 'google_drive' ? (
                     <>
                       💡 Make sure the file is set to{' '}
-                      <span className="font-semibold">"Anyone with the link"</span> in sharing settings
+                      <span className="font-semibold">{`"Anyone with the link"`}</span> in sharing settings
                     </>
                   ) : (
                     <>
@@ -530,14 +530,14 @@ export default function AddVideoPage({ params }: { params: { id: string } }) {
             {videoSource === 'google_drive' ? (
               <ol className="space-y-2 text-sm text-gray-700 list-decimal list-inside">
                 <li>Upload your video to Google Drive</li>
-                <li>Right-click the video → "Share"</li>
-                <li>Change to "Anyone with the link"</li>
+                <li>Right-click the video → {`"Share"`}</li>
+                <li>Change to {`"Anyone with the link"`}</li>
                 <li>Copy the link and paste it above</li>
               </ol>
             ) : (
               <ol className="space-y-2 text-sm text-gray-700 list-decimal list-inside">
                 <li>Upload your video to YouTube</li>
-                <li>Set visibility to "Public" or "Unlisted"</li>
+                <li>Set visibility to {`"Public"`} or {`"Unlisted"`}</li>
                 <li>Copy the video URL from the address bar</li>
                 <li>Paste it above (supports youtube.com/watch?v= or youtu.be/ formats)</li>
               </ol>

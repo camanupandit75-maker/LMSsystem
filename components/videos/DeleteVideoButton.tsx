@@ -85,7 +85,7 @@ export function DeleteVideoButton({ videoId, videoTitle, courseId }: DeleteVideo
             Delete Video?
           </AlertDialogTitle>
           <AlertDialogDescription className="pt-4">
-            Are you sure you want to delete <strong>"{videoTitle}"</strong>? This action cannot be undone.
+            Are you sure you want to delete <strong>{`"${videoTitle}"`}</strong>? This action cannot be undone.
             <br />
             <br />
             <span className="text-sm text-gray-500">
@@ -109,5 +109,7 @@ export function DeleteVideoButton({ videoId, videoTitle, courseId }: DeleteVideo
     </AlertDialog>
   )
 }
+
+
 
 

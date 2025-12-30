@@ -30,6 +30,7 @@ export function ReviewForm({ courseId, existingReview, onSuccess }: ReviewFormPr
 
   useEffect(() => {
     checkEnrollment()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   async function checkEnrollment() {

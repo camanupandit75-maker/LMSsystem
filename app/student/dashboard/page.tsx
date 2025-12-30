@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
+import Image from 'next/image'
 import { DashboardSwitcher } from '@/components/DashboardSwitcher'
 import { BookOpen, CheckCircle, TrendingUp, Star, GraduationCap, Rocket } from 'lucide-react'
 
@@ -138,10 +139,13 @@ export default async function StudentDashboard() {
                     >
                       {course?.thumbnail_url && (
                         <div className="relative overflow-hidden h-48 bg-gradient-to-br from-blue-100 to-purple-100">
-                          <img 
+                          <Image 
                             src={course.thumbnail_url} 
                             alt={course.title}
+                            width={400}
+                            height={192}
                             className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                            unoptimized
                           />
                           <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                         </div>

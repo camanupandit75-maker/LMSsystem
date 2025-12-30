@@ -57,6 +57,7 @@ export function Navbar() {
       subscription.unsubscribe()
       window.removeEventListener("scroll", handleScroll)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   async function checkUser() {

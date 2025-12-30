@@ -187,7 +187,7 @@ export default async function ManageInstructorPage({ params }: { params: { id: s
         {/* Courses List */}
         <Card className="border-0 shadow-xl rounded-2xl">
           <CardHeader>
-            <CardTitle className="text-2xl font-bold">📚 Instructor's Courses</CardTitle>
+            <CardTitle className="text-2xl font-bold">📚 Instructor&apos;s Courses</CardTitle>
           </CardHeader>
           <CardContent>
             {courses && courses.length > 0 ? (
@@ -225,7 +225,7 @@ export default async function ManageInstructorPage({ params }: { params: { id: s
               <div className="text-center py-12 text-gray-500">
                 <div className="text-6xl mb-4">📚</div>
                 <p className="text-lg font-medium">No courses yet</p>
-                <p className="text-sm mt-2">This instructor hasn't created any courses</p>
+                <p className="text-sm mt-2">This instructor hasn&apos;t created any courses</p>
               </div>
             )}
           </CardContent>

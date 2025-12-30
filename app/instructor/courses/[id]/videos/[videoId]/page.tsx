@@ -382,7 +382,7 @@ export default function EditVideoPage({ params }: { params: { id: string; videoI
                   {videoSource === 'google_drive' ? (
                     <>
                       💡 Make sure the file is set to{' '}
-                      <span className="font-semibold">"Anyone with the link"</span> in sharing settings
+                      <span className="font-semibold">{`"Anyone with the link"`}</span> in sharing settings
                     </>
                   ) : (
                     <>

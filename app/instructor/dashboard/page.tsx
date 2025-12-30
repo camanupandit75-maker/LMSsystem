@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
+import Image from 'next/image'
 import { DashboardSwitcher } from '@/components/DashboardSwitcher'
 import { BookOpen, Users, DollarSign, TrendingUp, Star, GraduationCap, CheckCircle2, Plus } from 'lucide-react'
 
@@ -89,7 +90,7 @@ export default async function InstructorDashboard() {
               </h1>
             </div>
           </div>
-          <p className="text-gray-600 text-lg font-medium ml-14">Here's an overview of your teaching journey</p>
+          <p className="text-gray-600 text-lg font-medium ml-14">Here&apos;s an overview of your teaching journey</p>
         </div>
 
         {/* Stats Grid */}
@@ -304,10 +305,13 @@ export default async function InstructorDashboard() {
 
                       {/* Course Thumbnail */}
                       {review.course?.thumbnail_url && (
-                        <img
+                        <Image
                           src={review.course.thumbnail_url}
                           alt={review.course.title}
+                          width={80}
+                          height={80}
                           className="w-20 h-20 rounded-lg object-cover flex-shrink-0 border border-gray-200"
+                          unoptimized
                         />
                       )}
                     </div>

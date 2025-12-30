@@ -347,7 +347,7 @@ export default async function CourseDetailPage({ params }: { params: { slug: str
                 {isEnrolled ? (
                   <div className="space-y-3">
                     <div className="bg-green-50 border-2 border-green-200 text-green-700 p-4 rounded-xl text-center font-medium">
-                      ✅ You're enrolled in this course!
+                      ✅ You&apos;re enrolled in this course!
                     </div>
                     <Link href={`/courses/${params.slug}/watch`}>
                       <Button className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 rounded-xl text-lg py-6">
@@ -357,7 +357,7 @@ export default async function CourseDetailPage({ params }: { params: { slug: str
                   </div>
                 ) : userRole === 'instructor' ? (
                   <div className="bg-blue-50 border-2 border-blue-200 text-blue-700 p-4 rounded-xl text-center text-sm">
-                    You're viewing this as an instructor. Switch to a student account to enroll.
+                    You&apos;re viewing this as an instructor. Switch to a student account to enroll.
                   </div>
                 ) : (
                   <EnrollButton 
