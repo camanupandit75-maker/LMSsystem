@@ -34,12 +34,15 @@ export default async function InstructorCoursesPage() {
   // Get subscription to check course limits
   const { data: subscription } = await supabase
     .from('instructor_subscriptions')
-    .select('*')
+    .select('courses_allowed, bonus_courses, plan_type, is_active, id')
     .eq('instructor_id', session.user.id)
     .eq('is_active', true)
-    .single()
+    .maybeSingle()
 
-  const totalCoursesAllowed = (subscription?.max_courses || 0) + (subscription?.bonus_courses || 0)
+  // Use correct column names: courses_allowed and bonus_courses
+  const baseCourses = subscription?.courses_allowed || 0
+  const bonusCourses = subscription?.bonus_courses || 0
+  const totalCoursesAllowed = baseCourses + bonusCourses
   const publishedCount = courses?.filter(c => c.status === 'published').length || 0
   const draftCount = courses?.filter(c => c.status === 'draft').length || 0
 
@@ -77,7 +80,7 @@ export default async function InstructorCoursesPage() {
               {courses?.length || 0}
             </p>
             <p className="text-xs text-gray-500 mt-1">
-              {subscription?.used_courses ?? courses?.length ?? 0} / {totalCoursesAllowed} allowed
+              {courses?.length ?? 0} / {totalCoursesAllowed} allowed
             </p>
             {subscription?.bonus_courses > 0 && (
               <p className="text-xs text-green-600 mt-0.5 font-medium">

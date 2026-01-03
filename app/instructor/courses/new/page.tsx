@@ -59,30 +59,43 @@ export default function NewCoursePage() {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) throw new Error('Not authenticated')
 
-      // Check subscription limit
-      const { data: subscription } = await supabase
+      // Get instructor's subscription limits
+      const { data: subscription, error: subError } = await supabase
         .from('instructor_subscriptions')
-        .select('*')
+        .select('courses_allowed, bonus_courses, is_active, id')
         .eq('instructor_id', session.user.id)
         .eq('is_active', true)
-        .single()
+        .maybeSingle()
 
-      if (!subscription) throw new Error('No active subscription found')
-      
-      // Calculate total allowed (base + bonus)
-      const totalAllowed = (subscription.max_courses || 0) + (subscription.bonus_courses || 0)
-      
-      // Get current course count
-      const { count } = await supabase
+      console.log('Subscription query result:', { subscription, subError })
+
+      if (subError) {
+        console.error('Subscription query error:', subError)
+        throw new Error(`Failed to check subscription: ${subError.message}`)
+      }
+
+      if (!subscription) {
+        throw new Error('No active subscription found. Please contact support.')
+      }
+
+      // Count existing courses
+      const { count: currentCourses, error: countError } = await supabase
         .from('courses')
         .select('*', { count: 'exact', head: true })
         .eq('instructor_id', session.user.id)
 
-      if ((count || 0) >= totalAllowed) {
-        const bonusText = subscription.bonus_courses > 0 
-          ? ` (${subscription.max_courses} base + ${subscription.bonus_courses} bonus)`
-          : ''
-        throw new Error(`You've reached your course limit (${totalAllowed} courses${bonusText}). Please upgrade your plan or request bonus courses.`)
+      if (countError) {
+        console.error('Course count error:', countError)
+        throw new Error(`Failed to count courses: ${countError.message}`)
+      }
+
+      // Calculate limits using correct column names
+      const totalAllowed = (subscription.courses_allowed || 1) + (subscription.bonus_courses || 0)
+      const coursesUsed = currentCourses || 0
+
+      // Check limit
+      if (coursesUsed >= totalAllowed) {
+        throw new Error(`Course limit reached (${coursesUsed}/${totalAllowed} used). Please upgrade or request bonus courses.`)
       }
 
       // Create course
@@ -105,11 +118,8 @@ export default function NewCoursePage() {
 
       if (courseError) throw courseError
 
-      // Update subscription used_courses count
-      await supabase
-        .from('instructor_subscriptions')
-        .update({ used_courses: (count || 0) + 1 })
-        .eq('id', subscription.id)
+      // Course created successfully - no need to update used_courses
+      // The count is calculated dynamically from the courses table
 
       // Redirect to course management
       router.push(`/instructor/courses/${course.id}`)

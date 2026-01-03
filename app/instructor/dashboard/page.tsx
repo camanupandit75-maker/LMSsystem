@@ -23,12 +23,23 @@ export default async function InstructorDashboard() {
   // Get subscription
   const { data: subscription } = await supabase
     .from('instructor_subscriptions')
-    .select('*')
+    .select('courses_allowed, bonus_courses, plan_type, is_active, id')
     .eq('instructor_id', session.user.id)
     .eq('is_active', true)
-    .single()
+    .maybeSingle()
 
-  // Get courses
+  console.log('📊 Subscription data:', subscription)
+
+  // Count actual courses created by this instructor
+  const { count: coursesCount, error: coursesError } = await supabase
+    .from('courses')
+    .select('*', { count: 'exact', head: true })
+    .eq('instructor_id', session.user.id)
+
+  console.log('📚 Actual courses count:', coursesCount)
+  console.log('❌ Courses count error:', coursesError)
+
+  // Get courses for display
   const { data: courses } = await supabase
     .from('courses')
     .select(`
@@ -69,10 +80,21 @@ export default async function InstructorDashboard() {
     ? coursesWithValidRatings.reduce((sum, c) => sum + (c.average_rating || 0), 0) / coursesWithValidRatings.length
     : 0
 
-  // Calculate total allowed courses (base + bonus)
-  const totalAllowed = (subscription?.max_courses || 0) + (subscription?.bonus_courses || 0)
-  const usedCourses = subscription?.used_courses || 0
-  const remainingCourses = totalAllowed - usedCourses
+  // Calculate values correctly using courses_allowed (correct column name)
+  const baseCourses = subscription?.courses_allowed || 0
+  const bonusCourses = subscription?.bonus_courses || 0
+  const totalAllowed = baseCourses + bonusCourses
+  const coursesUsed = coursesCount || 0
+  const remainingCourses = totalAllowed - coursesUsed
+
+  console.log('📈 Subscription calculations:', {
+    courses_allowed: subscription?.courses_allowed,
+    base_courses_calculated: baseCourses,
+    bonus_courses: bonusCourses,
+    total_allowed: totalAllowed,
+    courses_used: coursesUsed,
+    courses_remaining: remainingCourses
+  })
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-blue-50/50 p-6 md:p-8">
@@ -110,11 +132,11 @@ export default async function InstructorDashboard() {
                 {courses?.length || 0}
               </div>
               <p className="text-xs text-gray-600 mt-2 font-medium">
-                {usedCourses} / {totalAllowed} used
+                {coursesUsed} / {totalAllowed} used
               </p>
-              {subscription?.bonus_courses > 0 && (
+              {bonusCourses > 0 && (
                 <p className="text-xs text-green-600 mt-1 font-semibold">
-                  +{subscription.bonus_courses} bonus
+                  +{bonusCourses} bonus
                 </p>
               )}
             </CardContent>
@@ -212,19 +234,24 @@ export default async function InstructorDashboard() {
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
               <div>
                 <div className="text-3xl font-extrabold capitalize bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent mb-2">
-                  {subscription?.tier || 'Free'} Plan
+                  {subscription?.plan_type || 'Free'} Plan
                 </div>
                 <p className="text-gray-700 font-medium mt-1">
                   {totalAllowed} course{totalAllowed !== 1 ? 's' : ''} allowed
-                  {subscription?.bonus_courses > 0 && (
+                  {bonusCourses > 0 && (
                     <span className="text-green-600 font-semibold ml-1">
-                      ({subscription.max_courses} base + {subscription.bonus_courses} bonus)
+                      ({baseCourses} base + {bonusCourses} bonus)
                     </span>
                   )}
                 </p>
                 {remainingCourses > 0 && (
                   <p className="text-sm text-gray-600 mt-2 font-medium">
                     {remainingCourses} course{remainingCourses !== 1 ? 's' : ''} remaining
+                  </p>
+                )}
+                {remainingCourses <= 0 && totalAllowed > 0 && (
+                  <p className="text-sm text-red-600 mt-2 font-medium">
+                    Course limit reached
                   </p>
                 )}
               </div>

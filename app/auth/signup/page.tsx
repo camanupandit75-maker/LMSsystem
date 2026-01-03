@@ -124,8 +124,8 @@ export default function SignUpPage() {
           .insert({
             instructor_id: authData.user.id,
             tier: "free",
-            max_courses: 1,
-            used_courses: 0,
+            courses_allowed: 1,
+            bonus_courses: 0,
             is_active: true,
           })
 

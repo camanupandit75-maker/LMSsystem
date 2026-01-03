@@ -72,3 +72,6 @@ Some dashboard and course pages may still have old color schemes. To update them
 - [ ] All purple/blue replaced with indigo/violet
 
 
+
+
+

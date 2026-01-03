@@ -29,7 +29,7 @@ export async function grantBonusCourses(
   // Find subscription using same query as display
   const { data: subscription, error: findError } = await supabase
     .from('instructor_subscriptions')
-    .select('*')
+    .select('courses_allowed, bonus_courses, is_active, id, instructor_id')
     .eq('instructor_id', instructorId)
     .eq('is_active', true)
     .maybeSingle()
@@ -71,5 +71,8 @@ export async function grantBonusCourses(
 
   return { success: true, data: updatedData[0] }
 }
+
+
+
 
 

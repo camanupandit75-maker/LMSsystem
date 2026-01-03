@@ -40,7 +40,7 @@ export default async function ManageInstructorPage({ params }: { params: { id: s
   // Get subscription - use maybeSingle() to avoid errors if not found
   let { data: subscription, error: subscriptionError } = await supabase
     .from('instructor_subscriptions')
-    .select('*')
+    .select('courses_allowed, bonus_courses, plan_type, is_active, id, created_at, bonus_granted_at')
     .eq('instructor_id', params.id)
     .eq('is_active', true)
     .maybeSingle()
@@ -54,7 +54,7 @@ export default async function ManageInstructorPage({ params }: { params: { id: s
     console.log('⚠️ No active subscription found, trying to get any subscription...')
     const { data: anySubscription, error: anyError } = await supabase
       .from('instructor_subscriptions')
-      .select('*')
+      .select('courses_allowed, bonus_courses, plan_type, is_active, id, created_at, bonus_granted_at')
       .eq('instructor_id', params.id)
       .order('created_at', { ascending: false })
       .limit(1)
@@ -72,22 +72,38 @@ export default async function ManageInstructorPage({ params }: { params: { id: s
     console.error('❌ Error fetching subscription:', subscriptionError)
   }
 
-  // Get courses
+  // Count actual courses created by this instructor
+  const { count: actualCoursesCount, error: coursesError } = await supabase
+    .from('courses')
+    .select('*', { count: 'exact', head: true })
+    .eq('instructor_id', params.id)
+
+  console.log('📚 Actual courses count:', actualCoursesCount)
+  console.log('❌ Courses count error:', coursesError)
+
+  // Get courses for display
   const { data: courses } = await supabase
     .from('courses')
     .select('*')
     .eq('instructor_id', params.id)
     .order('created_at', { ascending: false })
 
-  const totalCoursesAllowed = (subscription?.max_courses || 0) + (subscription?.bonus_courses || 0)
+  // Calculate values correctly using courses_allowed (correct column name)
+  const baseCourses = subscription?.courses_allowed || 0
+  const bonusCourses = subscription?.bonus_courses || 0
+  const totalAllowed = baseCourses + bonusCourses
+  const coursesUsed = actualCoursesCount || 0
+  const coursesRemaining = totalAllowed - coursesUsed
   
   // Debug: Log calculated totals
   console.log('📈 Subscription details:', {
-    tier: subscription?.tier,
-    max_courses: subscription?.max_courses,
-    bonus_courses: subscription?.bonus_courses,
-    used_courses: subscription?.used_courses,
-    total_allowed: totalCoursesAllowed
+    plan_type: subscription?.plan_type,
+    courses_allowed: subscription?.courses_allowed,
+    base_courses_calculated: baseCourses,
+    bonus_courses: bonusCourses,
+    total_allowed: totalAllowed,
+    courses_used: coursesUsed,
+    courses_remaining: coursesRemaining
   })
 
   return (
@@ -146,21 +162,21 @@ export default async function ManageInstructorPage({ params }: { params: { id: s
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
               <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
                 <div className="text-sm text-purple-600 mb-1 font-medium">Plan Tier</div>
-                <div className="text-2xl font-bold capitalize">{subscription?.tier || 'None'}</div>
+                <div className="text-2xl font-bold capitalize">{subscription?.plan_type || 'None'}</div>
                 {subscription && (
                   <div className="text-xs text-purple-500 mt-1">ID: {subscription.id?.substring(0, 8)}...</div>
                 )}
               </div>
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                 <div className="text-sm text-blue-600 mb-1 font-medium">Base Courses</div>
-                <div className="text-2xl font-bold">{subscription?.max_courses ?? 0}</div>
+                <div className="text-2xl font-bold">{baseCourses}</div>
                 {subscription && (
                   <div className="text-xs text-blue-500 mt-1">Active: {subscription.is_active ? 'Yes' : 'No'}</div>
                 )}
               </div>
               <div className="bg-green-50 border border-green-200 rounded-lg p-4">
                 <div className="text-sm text-green-600 mb-1 font-medium">Bonus Courses</div>
-                <div className="text-2xl font-bold">{subscription?.bonus_courses ?? 0}</div>
+                <div className="text-2xl font-bold">{bonusCourses}</div>
                 {subscription && subscription.bonus_courses > 0 && (
                   <div className="text-xs text-green-500 mt-1">Granted: {subscription.bonus_granted_at ? new Date(subscription.bonus_granted_at).toLocaleDateString() : 'N/A'}</div>
                 )}
@@ -168,11 +184,9 @@ export default async function ManageInstructorPage({ params }: { params: { id: s
               <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
                 <div className="text-sm text-orange-600 mb-1 font-medium">Used / Total</div>
                 <div className="text-2xl font-bold">
-                  {subscription?.used_courses ?? 0} / {totalCoursesAllowed}
+                  {coursesUsed} / {totalAllowed}
                 </div>
-                {subscription && (
-                  <div className="text-xs text-orange-500 mt-1">Remaining: {totalCoursesAllowed - (subscription.used_courses || 0)}</div>
-                )}
+                <div className="text-xs text-orange-500 mt-1">Remaining: {coursesRemaining}</div>
               </div>
             </div>
 

@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 import { EnrollButton } from '@/components/EnrollButton'
+import PaymentButton from '@/components/payments/PaymentButton'
 import Image from 'next/image'
 import { Star } from 'lucide-react'
 import { ReviewForm } from '@/components/reviews/ReviewForm'
@@ -337,13 +338,6 @@ export default async function CourseDetailPage({ params }: { params: { slug: str
           <div className="lg:col-span-1">
             <Card className="sticky top-8 border-0 shadow-xl rounded-2xl">
               <CardContent className="p-6">
-                <div className="text-center mb-6">
-                  <div className="text-5xl font-bold text-green-600 mb-2">
-                    ${course.price.toFixed(2)}
-                  </div>
-                  <p className="text-gray-600 text-sm">One-time payment</p>
-                </div>
-
                 {isEnrolled ? (
                   <div className="space-y-3">
                     <div className="bg-green-50 border-2 border-green-200 text-green-700 p-4 rounded-xl text-center font-medium">
@@ -359,13 +353,41 @@ export default async function CourseDetailPage({ params }: { params: { slug: str
                   <div className="bg-blue-50 border-2 border-blue-200 text-blue-700 p-4 rounded-xl text-center text-sm">
                     You&apos;re viewing this as an instructor. Switch to a student account to enroll.
                   </div>
+                ) : (course.price === 0 || !course.price) ? (
+                  <div className="space-y-4">
+                    <div className="text-center mb-6">
+                      <div className="text-5xl font-bold text-green-600 mb-2">
+                        Free
+                      </div>
+                      <p className="text-gray-600 text-sm">Start learning now</p>
+                    </div>
+                    <EnrollButton 
+                      courseId={course.id} 
+                      courseSlug={params.slug}
+                      price={0}
+                      instructorId={course.instructor_id}
+                    />
+                  </div>
                 ) : (
-                  <EnrollButton 
-                    courseId={course.id} 
-                    courseSlug={params.slug}
-                    price={course.price}
-                    instructorId={course.instructor_id}
-                  />
+                  <div className="space-y-4">
+                    <div className="text-center mb-6">
+                      <div className="text-5xl font-bold text-green-600 mb-2">
+                        ₹{course.price.toLocaleString('en-IN')}
+                      </div>
+                      <p className="text-gray-600 text-sm">One-time payment</p>
+                    </div>
+                    
+                    <PaymentButton 
+                      courseId={course.id} 
+                      price={course.price}
+                      courseName={course.title}
+                      courseSlug={params.slug}
+                    />
+
+                    <p className="text-sm text-gray-600 text-center">
+                      30-day money-back guarantee
+                    </p>
+                  </div>
                 )}
 
                 <div className="mt-6 space-y-3 text-sm">

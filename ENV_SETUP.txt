@@ -48,3 +48,6 @@ For detailed Supabase setup, see SETUP_SUPABASE.md
 
 
 
+
+
+
