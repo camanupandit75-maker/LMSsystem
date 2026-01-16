@@ -46,13 +46,13 @@ export default function PaymentButton({ courseId, price, courseName, courseSlug 
             })
 
             // Success - redirect to course watch page
+            // Removed router.refresh() - it causes Server Component errors
             if (courseSlug) {
               router.push(`/courses/${courseSlug}/watch?enrolled=true`)
             } else {
               // Fallback: redirect to course detail page
               router.push(`/courses/${courseId}?enrolled=true`)
             }
-            router.refresh()
           } catch (error) {
             console.error('Payment verification failed:', error)
             alert('Payment verification failed. Please contact support.')

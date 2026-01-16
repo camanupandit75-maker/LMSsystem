@@ -16,7 +16,7 @@ export default async function CourseDetailPage({ params }: { params: { slug: str
   const { data: { session } } = await supabase.auth.getSession()
 
   // Get course by slug or id (fallback for courses without slug)
-  let { data: course } = await supabase
+  let { data: course, error: courseError } = await supabase
     .from('courses')
     .select(`
       *,
@@ -30,11 +30,15 @@ export default async function CourseDetailPage({ params }: { params: { slug: str
     `)
     .eq('slug', params.slug)
     .eq('status', 'published')
-    .single()
+    .maybeSingle()
+
+  if (courseError) {
+    console.error('Error fetching course by slug:', courseError)
+  }
 
   // If not found by slug, try by id (for backward compatibility)
   if (!course) {
-    const { data: courseById } = await supabase
+    const { data: courseById, error: courseByIdError } = await supabase
       .from('courses')
       .select(`
         *,
@@ -48,7 +52,11 @@ export default async function CourseDetailPage({ params }: { params: { slug: str
       `)
       .eq('id', params.slug)
       .eq('status', 'published')
-      .single()
+      .maybeSingle()
+    
+    if (courseByIdError) {
+      console.error('Error fetching course by ID:', courseByIdError)
+    }
     
     course = courseById
   }
@@ -67,13 +75,17 @@ export default async function CourseDetailPage({ params }: { params: { slug: str
   // Check if already enrolled
   let isEnrolled = false
   if (session) {
-    const { data: enrollment } = await supabase
+    const { data: enrollment, error: enrollmentError } = await supabase
       .from('enrollments')
       .select('id')
       .eq('student_id', session.user.id)
       .eq('course_id', course.id)
       .eq('is_active', true)
-      .single()
+      .maybeSingle()
+    
+    if (enrollmentError) {
+      console.error('Enrollment check error:', enrollmentError)
+    }
     
     isEnrolled = !!enrollment
   }
@@ -81,11 +93,15 @@ export default async function CourseDetailPage({ params }: { params: { slug: str
   // Get user profile to check role
   let userRole = null
   if (session) {
-    const { data: profile } = await supabase
+    const { data: profile, error: profileError } = await supabase
       .from('user_profiles')
       .select('role')
       .eq('id', session.user.id)
-      .single()
+      .maybeSingle()
+    
+    if (profileError) {
+      console.error('Profile check error:', profileError)
+    }
     
     userRole = profile?.role
   }
@@ -96,14 +112,16 @@ export default async function CourseDetailPage({ params }: { params: { slug: str
   // Get user's existing review if enrolled
   let existingReview = null
   if (session && isEnrolled) {
-    const { data: review } = await supabase
+    const { data: review, error: reviewError } = await supabase
       .from('course_reviews')
       .select('*')
       .eq('student_id', session.user.id)
       .eq('course_id', course.id)
-      .single()
+      .maybeSingle()
     
-    if (review) {
+    if (reviewError) {
+      console.error('Review check error:', reviewError)
+    } else if (review) {
       existingReview = {
         id: review.id,
         rating: review.rating,

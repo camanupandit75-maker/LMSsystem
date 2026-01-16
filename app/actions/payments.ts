@@ -20,9 +20,14 @@ export async function createPaymentOrder(courseId: string) {
     .from('courses')
     .select('id, title, price, instructor_id')
     .eq('id', courseId)
-    .single()
+    .maybeSingle()
 
-  if (courseError || !course) throw new Error('Course not found')
+  if (courseError) {
+    console.error('Error fetching course:', courseError)
+    throw new Error('Failed to fetch course details')
+  }
+  
+  if (!course) throw new Error('Course not found')
   
   // Check if course is free (price is 0 or null)
   const coursePrice = course.price || 0
@@ -46,16 +51,22 @@ export async function createPaymentOrder(courseId: string) {
   const instructorAmount = amountInPaise - platformFee // 70% to instructor
 
   // Create Razorpay order
-  const order = await razorpay.orders.create({
-    amount: amountInPaise,
-    currency: 'INR',
-    receipt: `course_${courseId}_${Date.now()}`,
-    notes: {
-      course_id: courseId,
-      student_id: session.user.id,
-      instructor_id: course.instructor_id,
-    },
-  })
+  let order
+  try {
+    order = await razorpay.orders.create({
+      amount: amountInPaise,
+      currency: 'INR',
+      receipt: `enroll_${Date.now()}`, // Fixed: max 40 chars (Razorpay limit)
+      notes: {
+        course_id: courseId,
+        student_id: session.user.id,
+        instructor_id: course.instructor_id,
+      },
+    })
+  } catch (razorpayError: any) {
+    console.error('Razorpay order creation failed:', razorpayError)
+    throw new Error(`Payment gateway error: ${razorpayError.message || 'Failed to create payment order'}`)
+  }
 
   // Save transaction to database
   const { data: transaction, error: txError } = await supabase
@@ -74,9 +85,16 @@ export async function createPaymentOrder(courseId: string) {
       notes: order.notes,
     })
     .select()
-    .single()
+    .maybeSingle()
 
-  if (txError) throw txError
+  if (txError) {
+    console.error('Payment transaction error:', txError)
+    throw new Error(`Payment failed: ${txError.message}`)
+  }
+  
+  if (!transaction) {
+    throw new Error('Payment transaction was not created')
+  }
 
   return {
     orderId: order.id,
@@ -123,9 +141,16 @@ export async function verifyPayment(data: {
     })
     .eq('razorpay_order_id', data.razorpay_order_id)
     .select()
-    .single()
+    .maybeSingle()
 
-  if (error) throw error
+  if (error) {
+    console.error('Error updating payment transaction:', error)
+    throw error
+  }
+  
+  if (!transaction) {
+    throw new Error('Payment transaction not found')
+  }
 
   // Enroll student in course
   const { error: enrollError } = await supabase
@@ -134,8 +159,7 @@ export async function verifyPayment(data: {
       student_id: transaction.student_id,
       course_id: transaction.course_id,
       enrolled_at: new Date().toISOString(),
-      amount: transaction.amount / 100, // Convert paise to rupees
-      amount_paid: transaction.amount / 100,
+      amount_paid: transaction.amount / 100, // Convert paise to rupees
       progress_percentage: 0,
       is_active: true,
     })
@@ -204,7 +228,7 @@ export async function createSubscriptionOrder(planType: string) {
   const order = await razorpay.orders.create({
     amount: amountInPaise,
     currency: 'INR',
-    receipt: `subscription_${planType}_${Date.now()}`,
+    receipt: `sub_${planType}_${Date.now()}`.substring(0, 40), // Ensure max 40 chars
     notes: {
       instructor_id: session.user.id,
       plan_type: planType,
@@ -249,6 +273,7 @@ export async function verifySubscriptionPayment(data: {
   razorpay_payment_id: string
   razorpay_signature: string
 }) {
+  console.log('🔍 Verifying subscription payment:', data.razorpay_order_id)
   const supabase = await createClient()
 
   // Verify signature
@@ -258,7 +283,14 @@ export async function verifySubscriptionPayment(data: {
     .update(text)
     .digest('hex')
 
+  console.log('🔍 Signature verification:', {
+    generated: generatedSignature.substring(0, 20) + '...',
+    received: data.razorpay_signature.substring(0, 20) + '...',
+    match: generatedSignature === data.razorpay_signature
+  })
+
   if (generatedSignature !== data.razorpay_signature) {
+    console.error('❌ Signature mismatch!')
     await supabase
       .from('subscription_payments')
       .update({ status: 'failed', updated_at: new Date().toISOString() })
@@ -266,6 +298,8 @@ export async function verifySubscriptionPayment(data: {
     
     throw new Error('Invalid payment signature')
   }
+
+  console.log('✅ Signature verified, updating payment...')
 
   // Update subscription payment as captured
   const { data: subscriptionPayment, error } = await supabase
@@ -279,9 +313,18 @@ export async function verifySubscriptionPayment(data: {
     })
     .eq('razorpay_order_id', data.razorpay_order_id)
     .select()
-    .single()
+    .maybeSingle()
 
-  if (error) throw error
+  if (error) {
+    console.error('❌ Failed to update payment status:', error)
+    throw error
+  }
+  
+  if (!subscriptionPayment) {
+    throw new Error('Subscription payment not found')
+  }
+
+  console.log('✅ Payment status updated to captured')
 
   // Update instructor subscription
   const planCourses: Record<string, number> = {
@@ -293,28 +336,27 @@ export async function verifySubscriptionPayment(data: {
 
   const coursesAllowed = planCourses[subscriptionPayment.plan_type] || 1
 
-  // Deactivate old subscription
-  await supabase
-    .from('instructor_subscriptions')
-    .update({ is_active: false })
-    .eq('instructor_id', subscriptionPayment.instructor_id)
-    .eq('is_active', true)
-
-  // Create new subscription
+  // Update existing subscription (preserves bonus_courses automatically)
   const { error: subscriptionError } = await supabase
     .from('instructor_subscriptions')
-    .insert({
-      instructor_id: subscriptionPayment.instructor_id,
+    .update({
       plan_type: subscriptionPayment.plan_type,
       courses_allowed: coursesAllowed,
-      bonus_courses: 0,
+      // Don't update bonus_courses - it will be preserved automatically
       is_active: true,
     })
+    .eq('instructor_id', subscriptionPayment.instructor_id)
 
   if (subscriptionError) {
-    console.error('Subscription update failed:', subscriptionError)
-    // Don't throw - payment succeeded, we'll fix subscription manually if needed
+    console.error('❌ Subscription update failed:', subscriptionError)
+    throw new Error(`Payment succeeded but subscription update failed: ${subscriptionError.message}`)
   }
+
+  console.log('✅ Subscription updated successfully:', {
+    instructor_id: subscriptionPayment.instructor_id,
+    plan_type: subscriptionPayment.plan_type,
+    courses_allowed: coursesAllowed
+  })
 
   return { success: true, subscriptionPayment }
 }

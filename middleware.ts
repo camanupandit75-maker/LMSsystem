@@ -36,11 +36,16 @@ export async function middleware(request: NextRequest) {
   // Get user profile if authenticated
   let userRole: string | null = null
   if (user) {
-    const { data: profile } = await supabase
+    const { data: profile, error: profileError } = await supabase
       .from('user_profiles')
       .select('role')
       .eq('id', user.id)
-      .single()
+      .maybeSingle()
+    
+    if (profileError) {
+      // Log but don't throw - middleware shouldn't crash the app
+      console.error('Middleware: Error fetching user profile:', profileError)
+    }
     
     userRole = profile?.role || null
   }

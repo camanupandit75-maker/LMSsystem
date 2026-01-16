@@ -19,25 +19,33 @@ export default async function WatchCoursePage({
   if (!session) redirect('/auth/signin')
 
   // Get course by slug or id
-  let { data: course } = await supabase
+  let { data: course, error: courseError } = await supabase
     .from('courses')
     .select(`
       *,
       category:course_categories(id, name, slug, icon)
     `)
     .eq('slug', params.slug)
-    .single()
+    .maybeSingle()
+
+  if (courseError) {
+    console.error('Error fetching course by slug:', courseError)
+  }
 
   // Fallback to ID if slug not found
   if (!course) {
-    const { data: courseById } = await supabase
+    const { data: courseById, error: courseByIdError } = await supabase
       .from('courses')
       .select(`
         *,
         category:course_categories(id, name, slug, icon)
       `)
       .eq('id', params.slug)
-      .single()
+      .maybeSingle()
+    
+    if (courseByIdError) {
+      console.error('Error fetching course by ID:', courseByIdError)
+    }
     
     course = courseById
   }
@@ -45,13 +53,17 @@ export default async function WatchCoursePage({
   if (!course) redirect('/courses')
 
   // Check enrollment
-  const { data: enrollment } = await supabase
+  const { data: enrollment, error: enrollmentError } = await supabase
     .from('enrollments')
     .select('*')
     .eq('student_id', session.user.id)
     .eq('course_id', course.id)
     .eq('is_active', true)
-    .single()
+    .maybeSingle()
+
+  if (enrollmentError) {
+    console.error('Error checking enrollment:', enrollmentError)
+  }
 
   if (!enrollment) redirect(`/courses/${params.slug}`)
 

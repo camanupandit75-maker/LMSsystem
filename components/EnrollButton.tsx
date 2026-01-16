@@ -31,13 +31,17 @@ export function EnrollButton({ courseId, courseSlug, price, instructorId }: Enro
       }
 
       // Check if already enrolled
-      const { data: existingEnrollment } = await supabase
+      const { data: existingEnrollment, error: checkError } = await supabase
         .from('enrollments')
         .select('id')
         .eq('student_id', session.user.id)
         .eq('course_id', courseId)
         .eq('is_active', true)
-        .single()
+        .maybeSingle()
+
+      if (checkError) {
+        console.error('Error checking enrollment:', checkError)
+      }
 
       if (existingEnrollment) {
         router.push(`/courses/${courseSlug}/watch`)
@@ -53,19 +57,22 @@ export function EnrollButton({ courseId, courseSlug, price, instructorId }: Enro
         .insert({
           student_id: session.user.id,
           course_id: courseId,
-          amount: price,
           amount_paid: price,
           progress_percentage: 0,
           is_active: true
         })
         .select()
-        .single()
+        .maybeSingle()
 
       if (enrollError) {
         if (enrollError.code === '23505') { // Duplicate key
           throw new Error('You are already enrolled in this course')
         }
         throw enrollError
+      }
+
+      if (!enrollment) {
+        throw new Error('Failed to create enrollment')
       }
 
       // Create transaction record (triggers automatic revenue split)
@@ -88,11 +95,15 @@ export function EnrollButton({ courseId, courseSlug, price, instructorId }: Enro
       }
 
       // Update course enrollment count
-      const { data: course } = await supabase
+      const { data: course, error: courseError } = await supabase
         .from('courses')
         .select('enrollment_count')
         .eq('id', courseId)
-        .single()
+        .maybeSingle()
+
+      if (courseError) {
+        console.error('Error fetching course:', courseError)
+      }
 
       if (course) {
         await supabase
@@ -102,10 +113,17 @@ export function EnrollButton({ courseId, courseSlug, price, instructorId }: Enro
       }
 
       // Redirect to watch page
+      // Removed router.refresh() - it causes Server Component errors
       router.push(`/courses/${courseSlug}/watch`)
-      router.refresh()
       
     } catch (err: any) {
+      console.error('Enrollment error details:', {
+        message: err.message,
+        code: err.code,
+        details: err.details,
+        hint: err.hint,
+        fullError: err
+      })
       setError(err.message || 'Failed to enroll')
       setLoading(false)
     }
