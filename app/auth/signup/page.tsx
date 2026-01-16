@@ -123,7 +123,7 @@ export default function SignUpPage() {
           .from("instructor_subscriptions")
           .insert({
             instructor_id: authData.user.id,
-            tier: "free",
+            plan_type: "free",
             courses_allowed: 1,
             bonus_courses: 0,
             is_active: true,
